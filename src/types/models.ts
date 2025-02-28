@@ -1,5 +1,6 @@
 export interface UserInfo {
     UserName: string;
+    UserId: number;
     ConnectionId: string;
   }
   
@@ -13,7 +14,7 @@ export interface UserInfo {
   }
   
   export interface GroupInfo {
-    GroupId: string;
+    GroupId: number;
     GroupName: string;
     CreatorConnectionId: string;
     Members: UserInfo[];
