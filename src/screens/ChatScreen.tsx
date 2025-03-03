@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, FlatList, TouchableOpacity } from 'react-native';
 import * as SignalR from '@microsoft/signalr';
-import { UserInfo, ChatSession, GroupInfo } from "../types/models";
+import { UserInfo, ChatSession, GroupInfo, Message, MessageType, MessageStatus } from "../types/models";
 
 interface LoginScreenProps {
     onLogin: (username: string) => void;
@@ -105,8 +105,9 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ username, selectedGro
 
     useEffect(() => {
         if (connection) {
-            connection.on('ReceiveGroupMessage', (groupId: number, sender: string, message: string) => {
+            connection.on('ReceiveGroupMessage', (sender: string, message: string,groupName:string,groupId: number) => {
                 if (groupId === selectedGroup.GroupId) {
+                    console.log('group message: ', message);
                     setMessages(prev => [...prev, { sender, message, timestamp: new Date().toLocaleTimeString() }]);
                 }
             });
@@ -122,10 +123,11 @@ const GroupChatScreen: React.FC<GroupChatScreenProps> = ({ username, selectedGro
     useEffect(() => {
         const fetchGroupChatHistory = async () => {
             const history = await connection.invoke('GetGroupChatHistory', selectedGroup.GroupId);
-            setMessages(history.map((h: { SenderId: number; MessageText: string; Timestamp: string }) => ({
-                sender: h.SenderId.toString(), // Convert user ID to string or fetch actual username
-                message: h.MessageText,
-                timestamp: new Date(h.Timestamp).toLocaleTimeString(),
+            console.log('group chat history: ', history);
+            setMessages(history.map((h: { senderId: number; messageText: string; createdOn: string }) => ({
+                sender: h.senderId.toString(), // Convert user ID to string or fetch actual username
+                message: h.messageText,
+                timestamp: new Date(h.createdOn).toLocaleTimeString(),
             })));
         };
         fetchGroupChatHistory();
@@ -214,41 +216,60 @@ interface ChatScreenProps {
     connection: SignalR.HubConnection;
 }
 
-interface Message {
-    sender: string;
-    message: string;
-    timestamp: string;
-}
+//interface Message {
+//    id: string;
+//    sender: string;
+//    text: string;
+//    timestamp: string;
+//    status: string
+//}
 
 const ChatScreen: React.FC<ChatScreenProps> = ({ username, selectedUser, connection }) => {
     const [messages, setMessages] = useState<Message[]>([]);
-    const [newMessage, setNewMessage] = useState<string>('');
+    const [newMessage, setNewMessage] = useState<Message>();
+    const [newMessageText, setNewMessageText] = useState<string>("");
 
     useEffect(() => {
         if (connection) {
-            connection.on('ReceiveMessage', (sender: string, message: string, recipient: string) => {
+            connection.on('ReceiveMessage', (sender: string, message: string, recipient: string, messageId: string) => {
                 if (recipient === username || sender === username) {
-                    setMessages(prev => [...prev, { sender, message, timestamp: new Date().toLocaleTimeString() }]);
+                    const newMessage: Message = {
+                        messageId: messageId,
+                        messageText: message,
+                        messageStatus: MessageStatus.Sending,
+                        senderName: username,
+                        createdOn: new Date(),
+                        senderId: 0,
+                        messageType: MessageType.Text,
+                        createdBy: undefined,
+                    };
+                    setMessages(prev => [...prev, newMessage]);
+
+                    // Mark message as read
+                    connection.invoke("MarkMessageAsRead", newMessage.messageId);
                 }
+            });
+            // Listen for message status updates
+            connection.on("MessageStatusUpdate", (messageId: string, status: MessageStatus) => {
+                setMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.messageId === messageId ? { ...msg, messageStatus: status } : msg
+                    )
+                );
             });
         }
     }, [connection]);
 
     useEffect(() => {
         const fetchChatHistory = async () => {
-            const history: { fromUser: string; messageText: string; createdOn: string }[] =
+            const history: Message[] =
                 await connection.invoke('GetChatHistory', username, selectedUser.UserName);
             console.log(history);
-            setMessages(history.map((h: { fromUser: string; messageText: string; createdOn: string }) => ({
-                sender: h.fromUser,
-                message: h.messageText,
-                timestamp: formatTimestamp(h.createdOn)
-            })))
+           
+            setMessages(history);
         };
         const formatTimestamp = (timestamp: string) => {
             const parsedDate = new Date(timestamp);
-            console.log("time stamp", timestamp);
-            console.log("history date", parsedDate);
             if (isNaN(parsedDate.getTime())) {
                 return "Invalid Date"; // Fallback in case of a parsing error
             }
@@ -258,24 +279,57 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ username, selectedUser, connect
     }, [selectedUser]);
 
     const sendMessage = async () => {
-        if (newMessage.trim() && selectedUser) {
-            await connection.invoke('SendMessageToUser', newMessage, selectedUser.ConnectionId);
-            setMessages(prev => [...prev, { sender: username, message: newMessage, timestamp: new Date().toLocaleTimeString() }]);
-            setNewMessage('');
+
+        if (newMessageText.trim() && selectedUser) {
+            const tempMessageId = Date.now().toString(); // Generate a temporary messageId
+            const newMessage: Message = {
+                messageId: tempMessageId,
+                messageText: newMessageText,
+                messageStatus: MessageStatus.Sending,
+                senderName: username,
+                createdOn: new Date(),
+                senderId: 0,
+                messageType: MessageType.Text,
+                createdBy: undefined,
+            };
+
+            setMessages(prev => [...prev, newMessage]);
+
+            await connection.invoke('SendMessageToUser', newMessage.messageText, selectedUser.ConnectionId);
+            // Send the message and receive the actual messageId from the backend
+            //const serverMessageId = await connection.invoke('SendMessageToUser', newMessageText, selectedUser.ConnectionId);
+
+            //// Update the messageId in the state with the actual server-generated ID
+            //setMessages(prev => prev.map(msg =>
+            //    msg.messageId === tempMessageId ? { ...msg, messageId: serverMessageId, messageStatus: "Sent" } : msg
+            //));
+            setNewMessageText("");
         }
     };
 
+    const formatTimestamp = (timestamp: string) => {
+        const parsedDate = new Date(timestamp);
+        if (isNaN(parsedDate.getTime())) {
+            return "Invalid Date"; // Fallback in case of a parsing error
+        }
+        return parsedDate.toLocaleTimeString();
+    };
     return (
         <View>
             <Text>Chat with {selectedUser.UserName}</Text>
             <FlatList
                 data={messages}
-                keyExtractor={(_, index) => index.toString()}
+                keyExtractor={(item) => item.messageId}
                 renderItem={({ item }) => (
-                    <Text>{item.timestamp} - {item.sender}: {item.message}</Text>
+                    <Text>
+                        {formatTimestamp(item.createdOn.toString())} - {item.senderName}: {item.messageText} {" "}
+                        <Text style={{ color: item.messageStatus === MessageStatus.Read ? "green" : "gray" }}>
+                            ({item.messageStatus})
+                        </Text>
+                    </Text>
                 )}
             />
-            <TextInput value={newMessage} onChangeText={setNewMessage} />
+            <TextInput value={newMessageText} onChangeText={setNewMessageText} />
             <Button title="Send" onPress={sendMessage} />
         </View>
     );
@@ -304,7 +358,7 @@ const App: React.FC = () => {
 
     const joinChat = async (user: string) => {
         const newConnection = new SignalR.HubConnectionBuilder()
-            .withUrl('https://localhost:44369/signalrtc')
+            .withUrl('http://localhost:5162/signalrtc')
             .withAutomaticReconnect()
             .build();
 
