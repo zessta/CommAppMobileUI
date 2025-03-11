@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { GiftedChat, IMessage } from 'react-native-gifted-chat';
+import {
+  GiftedChat,
+  IMessage,
+  ActionsProps,
+  InputToolbar,
+  Composer,
+  Send,
+} from 'react-native-gifted-chat';
+import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useSignalR } from '@/services/signalRService';
 import { SOCKET_URL } from '@/constants/Strings';
 import { ChatDataProps } from '../(tabs)/chatListScreen';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 type ChatScreenProps = {
   receiverData: string;
@@ -102,7 +111,16 @@ const ChatScreen: React.FC = () => {
     }
   };
 
-  // Handle the message reception via SignalR
+  const sendImage = async (imageUri: string) => {
+    try {
+      // Send the image to the server
+      await connection!.invoke('SendMessageToUser', imageUri, null, Number(receiverData.id));
+      console.log('Image sent successfully');
+    } catch (error) {
+      console.error('Error sending image: ', error);
+    }
+  };
+
   const handleReceivedMessage = useCallback(
     (
       senderUser: number,
@@ -111,7 +129,6 @@ const ChatScreen: React.FC = () => {
       receiverUser: number,
       messageId: number,
     ) => {
-      // Add the received message to the chat UI
       setMessages((prevMessages) =>
         GiftedChat.append(prevMessages, [
           {
@@ -140,6 +157,50 @@ const ChatScreen: React.FC = () => {
     }
   }, [connection, setupConnection, handleReceivedMessage]);
 
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const imageUri = result.assets[0].uri;
+      const newMessage: IMessage = {
+        _id: Math.random(),
+        text: '',
+        createdAt: new Date(),
+        user: {
+          _id: Number(senderData.id),
+          name: senderData.name,
+          avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData.name}`,
+        },
+        image: imageUri,
+      };
+      setMessages((prevMessages) => GiftedChat.append(prevMessages, [newMessage]));
+      sendImage(imageUri);
+    }
+  };
+
+  const renderActions = (props: ActionsProps) => (
+    <TouchableOpacity style={styles.actionButton} onPress={pickImage}>
+      <Ionicons name="image" size={24} color="#888" />
+    </TouchableOpacity>
+  );
+
+  const renderInputToolbar = (props: any) => (
+    <InputToolbar {...props}>
+      <View style={styles.inputToolbarContainer}>
+        <Composer {...props} />
+        <TouchableOpacity style={styles.actionButton} onPress={pickImage}>
+          <Ionicons name="image" size={24} color="#888" />
+        </TouchableOpacity>
+        <Send {...props} />
+      </View>
+    </InputToolbar>
+  );
+
   return (
     <View style={styles.container}>
       <Stack.Screen
@@ -157,10 +218,6 @@ const ChatScreen: React.FC = () => {
                 onPress={() => router.back()} // Use router.back() for back navigation in Expo Router
               >
                 <IconSymbol size={28} name="arrow-back" color={'black'} />
-                {/* <Image
-                source={require("path_to_your_back_arrow_icon")} // Add your back arrow image path here
-                style={{ width: 24, height: 24, marginRight: 10 }}
-              /> */}
               </TouchableOpacity>
               <Image
                 source={{
@@ -187,6 +244,7 @@ const ChatScreen: React.FC = () => {
           name: senderData.name,
           avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData.name}`,
         }}
+        renderInputToolbar={renderInputToolbar}
       />
     </View>
   );
@@ -196,6 +254,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  actionButton: {
+    marginBottom: 10,
+    marginRight: 10,
+  },
+  inputToolbarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
 
