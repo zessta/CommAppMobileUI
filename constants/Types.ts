@@ -18,3 +18,14 @@ export type ChatDataProps = {
   lastMessage: string;
   connectionId: string;
 };
+
+export type Group = {
+  id: number;
+  name: string;
+};
+
+export interface UserInfo {
+  UserName: string;
+  UserId: number;
+  ConnectionId: string;
+}

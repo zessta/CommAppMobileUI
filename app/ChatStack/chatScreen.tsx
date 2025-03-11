@@ -7,17 +7,12 @@ import { SOCKET_URL } from '@/constants/Strings';
 import { ChatDataProps } from '../(tabs)/chatListScreen';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 import { useRouter } from 'expo-router';
+import { UserInfo } from '@/constants/Types';
 
 type ChatScreenProps = {
   receiverData: string;
   senderData: string;
 };
-
-export interface UserInfo {
-  UserName: string;
-  UserId: number;
-  ConnectionId: string;
-}
 
 export type ChatMessageServer = {
   conversationId: number;

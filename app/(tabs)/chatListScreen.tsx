@@ -77,10 +77,10 @@ const ChatListScreen = () => {
   }, [connection]);
 
   // Filter chat data based on the search text
-  const filteredChats = chatUsers.filter(
+  const filteredChats = chatUsers?.filter(
     (chat) =>
-      chat.participants[0].userName.toLowerCase().includes(searchText.toLowerCase()) ||
-      chat.lastMessage.toLowerCase().includes(searchText.toLowerCase()),
+      chat.participants?.[0]?.userName.toLowerCase().includes(searchText.toLowerCase()) ||
+      chat?.lastMessage?.toLowerCase?.().includes(searchText.toLowerCase()),
   );
 
   // Function to join chat and fetch groups
