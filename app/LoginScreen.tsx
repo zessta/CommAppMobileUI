@@ -7,7 +7,7 @@ const LoginScreen = () => {
   const [input, setInput] = useState<string>("");
   const [showOTP, setShowOTP] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  const [filledOTP, setFilledOTP] = useState<number>();
+  const [filledOTP, setFilledOTP] = useState<number>(111111);
 
   const handleLogin = () => {
     setLoading(true);
@@ -21,7 +21,7 @@ const LoginScreen = () => {
     setLoading(true);
     setTimeout(() => {
     setLoading(false);
-    router.push("/(tabs)");
+    router.push({pathname : "/(tabs)/chatListScreen", params : {userInputName :  input}});
     }, 2000);
   }
   return (
