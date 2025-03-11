@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, Image, TouchableOpacity } from "react-native";
-import { GiftedChat, IMessage } from "react-native-gifted-chat";
-import { router, Stack, useLocalSearchParams } from "expo-router";
-import { useSignalR } from "@/services/signalRService";
-import { SOCKET_URL } from "@/constants/Strings";
-import { ChatDataProps } from "../(tabs)/chatListScreen";
-import { IconSymbol } from "@/components/ui/IconSymbol";
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { GiftedChat, IMessage } from 'react-native-gifted-chat';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useSignalR } from '@/services/signalRService';
+import { SOCKET_URL } from '@/constants/Strings';
+import { ChatDataProps } from '../(tabs)/chatListScreen';
+import { IconSymbol } from '../../components/ui/IconSymbol';
+import { useRouter } from 'expo-router';
 
 type ChatScreenProps = {
   receiverData: string;
@@ -40,15 +41,9 @@ const ChatScreen: React.FC = () => {
   const connection = useSignalR(SOCKET_URL);
 
   const handleIncomingMessage = useCallback(
-    (
-      chatMes: ChatMessageServer,
-      index: number,
-      senderId: number,
-      receiverId: number,
-    ) => {
+    (chatMes: ChatMessageServer, index: number, senderId: number, receiverId: number) => {
       const chatUser = chatMes.senderId === senderId ? senderId : receiverId;
-      const chatUserName =
-        chatMes.senderId === senderId ? senderData.name : receiverData.name;
+      const chatUserName = chatMes.senderId === senderId ? senderData.name : receiverData.name;
       setMessages((prevMessages) =>
         GiftedChat.append(prevMessages, [
           {
@@ -64,41 +59,32 @@ const ChatScreen: React.FC = () => {
   );
 
   const setupConnection = useCallback(async () => {
-    const testing = await connection!.invoke("GetUserList");
+    const testing = await connection!.invoke('GetUserList');
     const parsedTesting = JSON.parse(testing);
     setUsers(parsedTesting);
 
     const chatHisotry = await connection!.invoke(
-      "GetChatHistory",
+      'GetChatHistory',
       Number(senderData.id),
       Number(receiverData.id),
     );
     if (chatHisotry.length) {
       chatHisotry.forEach((chat: ChatMessageServer, index: number) => {
-        handleIncomingMessage(
-          chat,
-          index,
-          Number(senderData.id),
-          Number(receiverData.id),
-        );
+        handleIncomingMessage(chat, index, Number(senderData.id), Number(receiverData.id));
       });
     }
     const testingGetUserChat = await connection!.invoke(
-      "GetUserConversations",
+      'GetUserConversations',
       Number(senderData.id),
     );
   }, [connection, handleIncomingMessage, receiverData.id, senderData.id]);
 
   const onSend = useCallback(
     (newMessages: IMessage[] = []) => {
-      setMessages((prevMessages) =>
-        GiftedChat.append(prevMessages, newMessages),
-      );
+      setMessages((prevMessages) => GiftedChat.append(prevMessages, newMessages));
 
-      if (!connection || connection.state !== "Connected") {
-        console.error(
-          "Cannot send message: SignalR connection is not established.",
-        );
+      if (!connection || connection.state !== 'Connected') {
+        console.error('Cannot send message: SignalR connection is not established.');
         return;
       }
 
@@ -114,14 +100,9 @@ const ChatScreen: React.FC = () => {
         (user: any) => user.UserName === receiverData.name,
       )?.ConnectionId;
       // Send the message to the server
-      await connection!.invoke(
-        "SendMessageToUser",
-        messageText,
-        null,
-        Number(receiverData.id),
-      );
+      await connection!.invoke('SendMessageToUser', messageText, null, Number(receiverData.id));
     } catch (error) {
-      console.error("Error sending message: ", error);
+      console.error('Error sending message: ', error);
     }
   };
 
@@ -154,11 +135,11 @@ const ChatScreen: React.FC = () => {
       setupConnection();
 
       // Listen for incoming messages
-      connection.on("ReceiveMessage", handleReceivedMessage);
+      connection.on('ReceiveMessage', handleReceivedMessage);
 
       // Cleanup when the component is unmounted
       return () => {
-        connection.off("ReceiveMessage", handleReceivedMessage);
+        connection.off('ReceiveMessage', handleReceivedMessage);
       };
     }
   }, [connection, setupConnection, handleReceivedMessage]);
@@ -168,20 +149,18 @@ const ChatScreen: React.FC = () => {
       <Stack.Screen
         options={{
           title: receiverData.name,
-          headerLargeStyle: { backgroundColor: "blue" },
+          headerLargeStyle: { backgroundColor: 'blue' },
           headerLeft: () => (
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
-            >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <TouchableOpacity
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
+                  flexDirection: 'row',
+                  alignItems: 'center',
                   marginLeft: 10,
                 }}
                 onPress={() => router.back()} // Use router.back() for back navigation in Expo Router
               >
-                <IconSymbol size={28} name="arrow-back" color={"black"} />
+                <IconSymbol size={28} name="arrow-back" color={'black'} />
                 {/* <Image
                 source={require("path_to_your_back_arrow_icon")} // Add your back arrow image path here
                 style={{ width: 24, height: 24, marginRight: 10 }}
@@ -220,7 +199,7 @@ const ChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
 });
 
