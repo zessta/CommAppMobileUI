@@ -1,13 +1,24 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, Button, Text, TextInput, TouchableOpacity, View, StyleSheet } from "react-native";
-import { OtpInput } from "react-native-otp-entry";
+import { useUser } from '@/components/UserContext';
+import { CHAT_TEST_DATA, USER_CONTEXT } from '@/constants/Strings';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Button,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  StyleSheet,
+} from 'react-native';
+import { OtpInput } from 'react-native-otp-entry';
 const LoginScreen = () => {
-    const router = useRouter();
-  const [input, setInput] = useState<string>("");
+  const router = useRouter();
+  const [input, setInput] = useState<string>('');
   const [showOTP, setShowOTP] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [filledOTP, setFilledOTP] = useState<number>(111111);
+  const { setUser } = useUser(); // Get the setter function from context
 
   const handleLogin = () => {
     setLoading(true);
@@ -19,11 +30,13 @@ const LoginScreen = () => {
 
   const onClickedVerifyOTP = () => {
     setLoading(true);
+    const findLoginData = CHAT_TEST_DATA.find((data) => data.name === input);
     setTimeout(() => {
-    setLoading(false);
-    router.push({pathname : "/(tabs)/chatListScreen", params : {userInputName :  input}});
+      setLoading(false);
+      setUser(findLoginData || USER_CONTEXT);
+      router.push({ pathname: '/(tabs)/chatListScreen', params: { userInputName: input } });
     }, 2000);
-  }
+  };
   return (
     <View style={styles.container}>
       <View style={styles.card}>
@@ -38,7 +51,11 @@ const LoginScreen = () => {
               onChangeText={setInput}
             />
             <TouchableOpacity onPress={handleLogin} style={styles.button}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Next</Text>}
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Next</Text>
+              )}
             </TouchableOpacity>
           </View>
         ) : (
@@ -59,10 +76,16 @@ const LoginScreen = () => {
                 onPress={onClickedVerifyOTP}
                 style={[
                   styles.button,
-                  { backgroundColor: filledOTP && filledOTP.toString().length === 6 ? '#007AFF' : 'grey' },
-                ]}
-              >
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Verify OTP</Text>}
+                  {
+                    backgroundColor:
+                      filledOTP && filledOTP.toString().length === 6 ? '#007AFF' : 'grey',
+                  },
+                ]}>
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Verify OTP</Text>
+                )}
               </TouchableOpacity>
             </View>
           </>
@@ -98,7 +121,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: '#444',
-    color: '#fff',
+    color: '#000',
     width: '100%',
     padding: 10,
     borderRadius: 5,
@@ -122,5 +145,3 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
-
-

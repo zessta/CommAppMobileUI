@@ -1,12 +1,13 @@
-import { SocketProvider } from "@/components/SocketContext";
-import signalRService from "@/services/signalRService";
-import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
-import "react-native-get-random-values"; // Required for UUID support
-import "react-native-websocket"; // WebSocket polyfill for React Native
-import * as SignalR from "@microsoft/signalr";
-import { SOCKET_URL } from "@/constants/Strings";
+import { SocketProvider } from '@/components/SocketContext';
+import signalRService from '@/services/signalRService';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+import 'react-native-get-random-values'; // Required for UUID support
+import 'react-native-websocket'; // WebSocket polyfill for React Native
+import * as SignalR from '@microsoft/signalr';
+import { SOCKET_URL } from '@/constants/Strings';
+import { UserProvider } from '@/components/UserContext';
 
 // SplashScreen.preventAutoHideAsync();
 // SplashScreen.hideAsync();
@@ -20,7 +21,7 @@ export default function RootLayout() {
           transport: SignalR.HttpTransportType.WebSockets,
         });
       } catch (error) {
-        console.error("Root SignalR Error:", error);
+        console.error('Root SignalR Error:', error);
       }
     };
 
@@ -32,13 +33,13 @@ export default function RootLayout() {
     };
   }, []);
   return (
-    // <SocketProvider>
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="ChatStack/chatScreen" />
-      <Stack.Screen name="+not-found" />
-    </Stack>
-    // </SocketProvider>
+    <UserProvider>
+      <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="ChatStack/chatScreen" />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+    </UserProvider>
   );
 }
