@@ -3,12 +3,11 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'r
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSocket } from '@/components/SocketContext'; // Assuming context is correctly set up
-import { UserInfo } from '../ChatStack/chatScreen';
 import * as SignalR from '@microsoft/signalr';
 import { useSignalR } from '@/services/signalRService';
 import { SOCKET_URL } from '@/constants/Strings';
 import { useUser } from '@/components/UserContext';
-import { ChatLastConversationList } from '@/constants/Types';
+import { ChatLastConversationList, UserInfo } from '@/constants/Types';
 import { formattedTimeString } from '@/Utils/utils';
 
 export type ChatDataProps = {
