@@ -11,7 +11,6 @@ import { useRouter } from 'expo-router';
 type ChatScreenProps = {
   receiverData: string;
   senderData: string;
-  onlineUsers: string;
 };
 
 export interface UserInfo {
@@ -32,9 +31,8 @@ export type ChatMessageServer = {
 
 const ChatScreen: React.FC = () => {
   const searchParams = useLocalSearchParams<ChatScreenProps>();
-  const receiverData = JSON.parse(searchParams.receiverData);
-  const senderData = JSON.parse(searchParams.senderData);
-  const onlineUsers = JSON.parse(searchParams.onlineUsers);
+  const receiverData: ChatDataProps = JSON.parse(searchParams.receiverData);
+  const senderData: ChatDataProps = JSON.parse(searchParams.senderData);
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
@@ -96,11 +94,9 @@ const ChatScreen: React.FC = () => {
 
   const sendMessage = async (messageText: string) => {
     try {
-      const receiverConnectionId = onlineUsers.find(
-        (user: any) => user.UserName === receiverData.name,
-      )?.ConnectionId;
       // Send the message to the server
       await connection!.invoke('SendMessageToUser', messageText, null, Number(receiverData.id));
+      console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message: ', error);
     }
@@ -168,7 +164,7 @@ const ChatScreen: React.FC = () => {
               </TouchableOpacity>
               <Image
                 source={{
-                  uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData.name}`,
+                  uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${receiverData.name}`,
                 }}
                 style={{
                   width: 40,

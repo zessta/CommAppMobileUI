@@ -1,56 +1,52 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSocket } from "@/components/SocketContext"; // Assuming context is correctly set up
-import { UserInfo } from "../ChatStack/chatScreen";
-import * as SignalR from "@microsoft/signalr";
-import { useSignalR } from "@/services/signalRService";
-import { SOCKET_URL } from "@/constants/Strings";
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSocket } from '@/components/SocketContext'; // Assuming context is correctly set up
+import { UserInfo } from '../ChatStack/chatScreen';
+import * as SignalR from '@microsoft/signalr';
+import { useSignalR } from '@/services/signalRService';
+import { SOCKET_URL } from '@/constants/Strings';
+import { useUser } from '@/components/UserContext';
+import { ChatLastConversationList } from '@/constants/Types';
+import { formattedTimeString } from '@/Utils/utils';
 
 export type ChatDataProps = {
-  id: string;
+  id: number;
   name: string;
   time: string;
   lastMessage: string;
-  connectionId: string;
+  connectionId?: string;
 };
 // Sample chat data
 export const chatData: ChatDataProps[] = [
   {
-    id: "1",
-    name: "Chrome",
-    time: "10:30 AM",
-    lastMessage: "Hey! How are you?",
-    connectionId: "I6yM7Wr8IFll3kcBKVXQWg",
+    id: 1,
+    name: 'Chrome',
+    time: '10:30 AM',
+    lastMessage: 'Hey! How are you?',
+    connectionId: 'I6yM7Wr8IFll3kcBKVXQWg',
   },
   {
-    id: "2",
-    name: "Edge",
-    time: "Yesterday",
+    id: 2,
+    name: 'Edge',
+    time: 'Yesterday',
     lastMessage: "Let's catch up soon.",
-    connectionId: "R-efzNHU894RGXYLoft9EA",
+    connectionId: 'R-efzNHU894RGXYLoft9EA',
   },
   {
-    id: "3",
-    name: "Incog",
-    time: "Monday",
-    lastMessage: "Did you check the document?",
-    connectionId: "HdrHx-u-Ou4cHrb7R49h5g",
+    id: 3,
+    name: 'Incog',
+    time: 'Monday',
+    lastMessage: 'Did you check the document?',
+    connectionId: 'HdrHx-u-Ou4cHrb7R49h5g',
   },
   {
-    id: "6",
-    name: "Test",
-    time: "Sunday",
-    lastMessage: "See you at the event!",
-    connectionId: "R-efzNHU894RGXYLoft9EA",
+    id: 6,
+    name: 'Test',
+    time: 'Sunday',
+    lastMessage: 'See you at the event!',
+    connectionId: 'R-efzNHU894RGXYLoft9EA',
   },
 ];
 
@@ -67,59 +63,54 @@ export interface GroupInfo {
 
 const ChatListScreen = () => {
   const { userInputName } = useLocalSearchParams<ChatScreenProps>(); // Extract the parameter
-  const [searchText, setSearchText] = useState("");
-  const [users, setUsers] = useState<UserInfo[]>([]);
-  const [groups, setGroups] = useState<GroupInfo[]>([]);
+  const [searchText, setSearchText] = useState('');
+  const [chatUsers, setChatUsers] = useState<ChatLastConversationList[]>([]);
   const connection = useSignalR(SOCKET_URL);
   const router = useRouter();
+  const { user } = useUser(); // Access the user from context
 
-  // Filter chat data based on the search text
-  const filteredChats = chatData.filter(
-    (chat) =>
-      chat.name.toLowerCase().includes(searchText.toLowerCase()) ||
-      chat.lastMessage.toLowerCase().includes(searchText.toLowerCase()),
-  );
   // Join chat when the connection is available
   useEffect(() => {
     if (connection) {
-      joinChat(userInputName);
+      joinChat();
     }
   }, [connection]);
 
-  // Function to join chat and fetch groups
-  const joinChat = async (user: string) => {
-    try {
-      await connection!.invoke("NewUser", user);
+  // Filter chat data based on the search text
+  const filteredChats = chatUsers.filter(
+    (chat) =>
+      chat.participants[0].userName.toLowerCase().includes(searchText.toLowerCase()) ||
+      chat.lastMessage.toLowerCase().includes(searchText.toLowerCase()),
+  );
 
-      const chatUserLists = await connection!.invoke("GetUserList");
+  // Function to join chat and fetch groups
+  const joinChat = async () => {
+    try {
+      await connection!.invoke('NewUser', user?.name);
+
+      const chatUserLists = await connection!.invoke('GetUserList');
       const parsedChatUserLists = JSON.parse(chatUserLists);
-      setUsers(parsedChatUserLists);
-      const userId =
-        parsedChatUserLists.length &&
-        parsedChatUserLists?.find(
-          (user: any) => user.UserName === userInputName,
-        )?.UserId;
-      const testingGetUserChat = await connection!.invoke(
-        "GetUserConversations",
-        userId,
-      );
-      const chatHisotry = await connection!.invoke("GetChatHistory", 4, 5);
+      const chatLastConversations = await connection!.invoke('GetUserConversations', user?.id);
+      console.log('chatLastConversations', chatLastConversations);
+      setChatUsers(chatLastConversations);
     } catch (error) {
-      console.error("Error joining chat:", error);
+      console.error('Error joining chat:', error);
     }
   };
+  console.log('filteredChats', filteredChats);
 
-  const senderData = chatData.find((chat) => chat.name === userInputName);
-
+  const receiverDataObject = (item: ChatLastConversationList) => {
+    return JSON.stringify({
+      id: item.participants[0].userId,
+      name: item.participants[0].userName,
+      time: item.lastMessageTime,
+      lastMessage: item.lastMessage,
+    });
+  };
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
-        <Ionicons
-          name="search"
-          size={20}
-          color="#888"
-          style={styles.searchIcon}
-        />
+        <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
         <TextInput
           style={styles.searchBar}
           placeholder="Search by name or message"
@@ -128,37 +119,30 @@ const ChatListScreen = () => {
           onChangeText={setSearchText}
         />
         {searchText.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchText("")}>
-            <Ionicons
-              name="close"
-              size={20}
-              color="#888"
-              style={styles.clearIcon}
-            />
+          <TouchableOpacity onPress={() => setSearchText('')}>
+            <Ionicons name="close" size={20} color="#888" style={styles.clearIcon} />
           </TouchableOpacity>
         )}
       </View>
 
       <FlatList
         data={filteredChats}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.conversationId.toString()}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.chatBox}
             onPress={() =>
               router.push({
-                pathname: "/ChatStack/chatScreen",
+                pathname: '/ChatStack/chatScreen',
                 params: {
-                  receiverData: JSON.stringify(item),
-                  senderData: JSON.stringify(senderData),
-                  onlineUsers: JSON.stringify(users),
+                  receiverData: receiverDataObject(item),
+                  senderData: JSON.stringify(user),
                 },
               })
-            }
-          >
-            <Text style={styles.name}>{item.name}</Text>
+            }>
+            <Text style={styles.name}>{item.participants[0].userName}</Text>
             <Text style={styles.message}>{item.lastMessage}</Text>
-            <Text style={styles.time}>{item.time}</Text>
+            <Text style={styles.time}>{formattedTimeString(item.lastMessageTime)}</Text>
           </TouchableOpacity>
         )}
       />
@@ -169,13 +153,13 @@ const ChatListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     padding: 10,
   },
   searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f0f0f0",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
     paddingHorizontal: 10,
     borderRadius: 8,
     marginBottom: 10,
@@ -189,29 +173,29 @@ const styles = StyleSheet.create({
   searchBar: {
     flex: 1,
     fontSize: 16,
-    color: "#000",
+    color: '#000',
     paddingVertical: 8,
   },
   chatBox: {
-    backgroundColor: "#f5f5f5",
+    backgroundColor: '#f5f5f5',
     padding: 15,
     borderRadius: 10,
     marginVertical: 5,
   },
   name: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
+    fontWeight: 'bold',
+    color: '#000',
   },
   message: {
     fontSize: 14,
-    color: "#555",
+    color: '#555',
     marginVertical: 5,
   },
   time: {
     fontSize: 12,
-    color: "#999",
-    textAlign: "right",
+    color: '#999',
+    textAlign: 'right',
   },
 });
 
