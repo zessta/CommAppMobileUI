@@ -1,0 +1,11 @@
+/.expo
+node_modules
+/android
+/ios
+/web
+/.vscode
+/.expo-shared
+/.idea
+/.git
+/.github
+/.gradle

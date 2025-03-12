@@ -1,8 +1,9 @@
 module.exports = {
-  extends: ["expo", "prettier"],
-  plugins: ["prettier"],
+  extends: ['expo', 'prettier'],
+  plugins: ['prettier'],
   rules: {
-    "prettier/prettier": "error",
+    'prettier/prettier': 'error',
+    'import/no-unresolved': ['error', { ignore: ['^@/'] }],
   },
   settings: {
     react: {
@@ -10,7 +11,7 @@ module.exports = {
     },
     'import/resolver': {
       node: {
-        paths: ['src', 'app'],  // Make sure to include both `src` and `app` if using Expo Router
+        paths: ['src', 'app'], // Make sure to include both `src` and `app` if using Expo Router
       },
     },
   },

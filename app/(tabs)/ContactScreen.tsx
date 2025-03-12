@@ -4,15 +4,7 @@ import { ChatLastConversationList } from '@/constants/Types';
 import { useSignalR } from '@/services/signalRService';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, TextInput, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
 
 const ContactScreen = () => {
   const connection = useSignalR(SOCKET_URL);
@@ -20,6 +12,7 @@ const ContactScreen = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const { user } = useUser(); // Access the user from context
   console.log('conext user', user);
+
   useEffect(() => {
     if (connection) {
       getContactsList();
@@ -35,6 +28,7 @@ const ContactScreen = () => {
   const filteredContacts = contactsList.filter((contact) =>
     contact.participants[0].userName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+
   // Function to handle navigation on clicking a contact card
   const handleContactPress = (contactId: ChatLastConversationList) => {
     const receiverDataObject = JSON.stringify({
@@ -52,6 +46,29 @@ const ContactScreen = () => {
       },
     });
   };
+
+  // Render Item for FlatList
+  const renderContact = ({ item }: { item: ChatLastConversationList }) => (
+    <TouchableOpacity onPress={() => handleContactPress(item)} style={styles.card}>
+      {/* Profile Image */}
+      <Image
+        source={{
+          uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${item.participants[0].userName}`,
+        }}
+        style={styles.profileImage}
+      />
+
+      {/* Name and Last Message */}
+      <View style={styles.textContainer}>
+        {/* Participant's Username as Header */}
+        <Text style={styles.username}>{item.participants[0].userName}</Text>
+
+        {/* Last Message */}
+        <Text style={styles.lastMessage}>{item.lastMessage}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       {/* Search Bar */}
@@ -62,39 +79,14 @@ const ContactScreen = () => {
         onChangeText={setSearchQuery}
       />
 
-      {/* Contacts List */}
-      <ScrollView contentContainerStyle={styles.scrollView}>
-        {filteredContacts.length > 0 ? (
-          filteredContacts.map((contact, index) => (
-            <TouchableOpacity
-              key={index}
-              onPress={() => handleContactPress(contact)}
-              style={styles.card}>
-              {/* Profile Image */}
-              <Image
-                source={{
-                  uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${contact.participants[0].userName}`,
-                }}
-                style={styles.profileImage}
-              />
-
-              {/* Name and Last Message */}
-              <View style={styles.textContainer}>
-                {/* Participant's Username as Header */}
-                <Text style={styles.username}>{contact.participants[0].userName}</Text>
-
-                {/* Participant's Name as Subtext */}
-                {/* <Text style={styles.contactName}>{contact.contactName}</Text> */}
-
-                {/* Last Message */}
-                <Text style={styles.lastMessage}>{contact.lastMessage}</Text>
-              </View>
-            </TouchableOpacity>
-          ))
-        ) : (
-          <Text style={styles.noContactsText}>No contacts found</Text>
-        )}
-      </ScrollView>
+      {/* Contacts List using FlatList */}
+      <FlatList
+        data={filteredContacts}
+        renderItem={renderContact}
+        keyExtractor={(item, index) => item.participants[0].userId + index.toString()} // Unique key for each item
+        contentContainerStyle={styles.scrollView}
+        ListEmptyComponent={<Text style={styles.noContactsText}>No contacts found</Text>}
+      />
     </View>
   );
 };
