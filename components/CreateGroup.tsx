@@ -11,11 +11,10 @@ import {
   Modal,
 } from 'react-native';
 import { useUser } from '@/components/UserContext';
-import { ChatLastConversationList } from '@/constants/Types';
+import { ChatLastConversationList, UserInfo } from '@/constants/Types';
 import { useSignalR } from '@/services/signalRService';
 import { SOCKET_URL } from '@/constants/Strings';
 import Checkbox from 'expo-checkbox';
-import { UserInfo } from '@/app/ChatStack/chatScreen';
 
 const CreateGroup = ({
   setIsDialogVisible,
@@ -38,7 +37,6 @@ const CreateGroup = ({
     const chatUserLists = await connection!.invoke('GetUserList');
     setOnlineUsers(JSON.parse(chatUserLists));
     const chatLastConversations = await connection!.invoke('GetUserConversations', user?.id);
-    console.log('chatLastConversations', chatLastConversations);
     setContactsList(chatLastConversations);
   };
 
@@ -62,7 +60,6 @@ const CreateGroup = ({
       alert('Please select at least one member for the group');
       return;
     }
-    console.log('onlineUsers', onlineUsers);
     // Find the selected users' connection IDs from the online users
     const findSelectedConnectionIds = selectedContacts
       .map((id) => {
@@ -71,13 +68,11 @@ const CreateGroup = ({
       })
       .filter((connectionId) => connectionId !== null); // Remove null values if no connection ID is found
     const findSenderConnectionId = onlineUsers?.find((users) => users.UserId === user?.id);
-    findSelectedConnectionIds.push(findSenderConnectionId?.ConnectionId);
+    findSelectedConnectionIds.push(findSenderConnectionId?.ConnectionId!);
     if (findSelectedConnectionIds.length === 0) {
       alert('No selected users are online');
       return;
     }
-
-    console.log('Selected connection IDs:', findSelectedConnectionIds);
 
     // Now invoke the 'CreateGroup' method with the group name and selected connection IDs
     await connection!.invoke('CreateGroup', groupName, findSelectedConnectionIds);
@@ -87,11 +82,6 @@ const CreateGroup = ({
   };
 
   return (
-    // <Modal
-    //   visible={true}
-    //   onRequestClose={() => setIsDialogVisible(false)}
-    //   animationType="slide"
-    //   style={styles.modal}>
     <View style={styles.scrollContainer}>
       <View style={styles.dialogContainer}>
         <Text style={styles.dialogTitle}>Create New Group</Text>
@@ -130,7 +120,6 @@ const CreateGroup = ({
         </View>
       </View>
     </View>
-    // </Modal>
   );
 };
 

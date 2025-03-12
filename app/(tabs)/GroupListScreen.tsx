@@ -1,4 +1,4 @@
-import React, { useState, useEffect, SetStateAction, Dispatch } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Button,
 } from 'react-native';
 import { useUser } from '@/components/UserContext'; // Assuming you have user context
-import { ChatLastConversationList, Group, UserInfo } from '@/constants/Types'; // Assuming you have a Group type
+import { Group, GroupList, UserInfo } from '@/constants/Types'; // Assuming you have a Group type
 import { useSignalR } from '@/services/signalRService';
 import { SOCKET_URL } from '@/constants/Strings';
 import CreateGroup from '@/components/CreateGroup';
@@ -18,44 +18,36 @@ import CreateGroup from '@/components/CreateGroup';
 const GroupListScreen = () => {
   const { user } = useUser(); // Access user from context
   const connection = useSignalR(SOCKET_URL);
-
-  const [groupsList, setGroupsList] = useState<UserInfo[]>([]);
+  const [groupsList, setGroupsList] = useState<GroupList[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
   const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
 
   useEffect(() => {
     if (connection) {
-      getContactsList();
+      connection!.on('UpdateGroupList', (groupListJson: string) => {
+        setGroupsList(JSON.parse(groupListJson));
+      });
+      getGroupList();
     }
   }, [connection]);
 
-  const getContactsList = async () => {
-    const groupList = await connection!.invoke('GetGroups');
-    console.log('groupList', groupList);
-    setGroupsList(JSON.parse(groupList));
+  const getGroupList = async () => {
+    await connection!.invoke('GetGroups');
   };
 
   const filteredGroupsList = groupsList?.filter((group) =>
-    group?.UserName.toLowerCase().includes(searchQuery.toLowerCase()),
+    group?.GroupName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  // Handle "Create Group" action
   const handleCreateGroup = () => {
-    console.log('Create Group clicked');
     setIsDialogVisible(true);
-    // Navigate to the create group screen or show a form/dialog to create a group
   };
 
-  // Render item for FlatList
-  const renderGroup = ({ item }: { item: string[] }) => {
-    console.log('item', item);
-    return (
-      <TouchableOpacity style={styles.card}>
-        {/* <Text style={styles.groupName}>{item}</Text> */}
-      </TouchableOpacity>
-    );
-  };
+  const renderGroup = ({ item }: { item: GroupList }) => (
+    <TouchableOpacity style={styles.card}>
+      <Text style={styles.groupName}>{item.GroupName}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
@@ -74,34 +66,37 @@ const GroupListScreen = () => {
       </View>
 
       {/* FlatList to show filtered groups */}
-      {filteredGroupsList?.length && (
+      {filteredGroupsList?.length ? (
         <FlatList
           data={filteredGroupsList}
           renderItem={renderGroup}
-          keyExtractor={(item) => item?.id?.toString?.()}
+          keyExtractor={(item) => item?.GroupId?.toString() || Math.random().toString()}
           contentContainerStyle={styles.scrollView}
           ListEmptyComponent={<Text style={styles.noGroupsText}>No groups found</Text>}
         />
-      )}
+      ) : null}
+
       {/* Modal/Dialog for showing group details or creating a group */}
       <Modal
         visible={isDialogVisible}
         onRequestClose={() => setIsDialogVisible(false)}
         animationType="slide"
-        style={styles.modal}>
-        <CreateGroup setIsDialogVisible={setIsDialogVisible} />
+        transparent>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <CreateGroup setIsDialogVisible={setIsDialogVisible} />
+          </View>
+        </View>
       </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  modal: {
-    flex: 1,
-  },
   container: {
     flex: 1,
     padding: 16,
+    backgroundColor: '#f8f8f8',
   },
   searchBarContainer: {
     flexDirection: 'row',
@@ -110,11 +105,11 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     height: 40,
+    flex: 1,
+    paddingLeft: 10,
     borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 8,
-    paddingLeft: 10,
-    flex: 1,
   },
   createButton: {
     marginLeft: 16,
@@ -132,7 +127,7 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#ffffff',
     marginBottom: 10,
     borderRadius: 8,
     shadowColor: '#000',
@@ -149,11 +144,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
   },
-  dialogContainer: {
+  modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
     padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+  },
+  modalCloseButton: {
+    marginTop: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    backgroundColor: '#ff4444',
+    borderRadius: 8,
+  },
+  modalCloseText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
 
