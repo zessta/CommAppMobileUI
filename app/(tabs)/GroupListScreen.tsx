@@ -13,7 +13,8 @@ import { useUser } from '@/components/UserContext'; // Assuming you have user co
 import { Group, GroupList, UserInfo } from '@/constants/Types'; // Assuming you have a Group type
 import { useSignalR } from '@/services/signalRService';
 import { SOCKET_URL } from '@/constants/Strings';
-import CreateGroup from '@/components/CreateGroup';
+import CreateGroup from '@/app/GroupStack/CreateGroup';
+import { router } from 'expo-router';
 
 const GroupListScreen = () => {
   const { user } = useUser(); // Access user from context
@@ -44,7 +45,14 @@ const GroupListScreen = () => {
   };
 
   const renderGroup = ({ item }: { item: GroupList }) => (
-    <TouchableOpacity style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() =>
+        router.push({
+          pathname: '/GroupStack/GroupChatScreen',
+          params: { selectedGroup: JSON.stringify(item) },
+        })
+      }>
       <Text style={styles.groupName}>{item.GroupName}</Text>
     </TouchableOpacity>
   );

@@ -7,21 +7,11 @@ import { SOCKET_URL } from '@/constants/Strings';
 import { ChatDataProps } from '../(tabs)/chatListScreen';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 import { useRouter } from 'expo-router';
-import { UserInfo } from '@/constants/Types';
+import { ChatMessageServer, UserInfo } from '@/constants/Types';
 
 type ChatScreenProps = {
   receiverData: string;
   senderData: string;
-};
-
-export type ChatMessageServer = {
-  conversationId: number;
-  createdOn: string;
-  messageId: string;
-  messageStatus: number;
-  messageText: string;
-  messageType: number;
-  senderId: number;
 };
 
 const ChatScreen: React.FC = () => {
@@ -152,10 +142,6 @@ const ChatScreen: React.FC = () => {
                 onPress={() => router.back()} // Use router.back() for back navigation in Expo Router
               >
                 <IconSymbol size={28} name="arrow-back" color={'black'} />
-                {/* <Image
-                source={require("path_to_your_back_arrow_icon")} // Add your back arrow image path here
-                style={{ width: 24, height: 24, marginRight: 10 }}
-              /> */}
               </TouchableOpacity>
               <Image
                 source={{

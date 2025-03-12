@@ -1,6 +1,6 @@
 import { useUser } from '@/components/UserContext';
 import { CHAT_TEST_DATA, SOCKET_URL } from '@/constants/Strings';
-import { ChatLastConversationList } from '@/constants/Types';
+import { ChatLastConversationList, UserInfo } from '@/constants/Types';
 import { useSignalR } from '@/services/signalRService';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -11,7 +11,6 @@ const ContactScreen = () => {
   const [contactsList, setContactsList] = useState<ChatLastConversationList[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const { user } = useUser(); // Access the user from context
-  console.log('conext user', user);
 
   useEffect(() => {
     if (connection) {
