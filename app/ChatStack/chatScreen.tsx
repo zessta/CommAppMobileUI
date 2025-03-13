@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { GiftedChat, IMessage } from 'react-native-gifted-chat';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useSignalR } from '@/services/signalRService';
 import { SOCKET_URL } from '@/constants/Strings';
+import { ChatMessageServer, UserInfo } from '@/constants/Types';
+import { useSignalR } from '@/services/signalRService';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { GiftedChat, IMessage } from 'react-native-gifted-chat';
 import { ChatDataProps } from '../(tabs)/chatListScreen';
 import { IconSymbol } from '../../components/ui/IconSymbol';
-import { useRouter } from 'expo-router';
-import { ChatMessageServer, UserInfo } from '@/constants/Types';
 
 type ChatScreenProps = {
   receiverData: string;
@@ -56,10 +55,6 @@ const ChatScreen: React.FC = () => {
         handleIncomingMessage(chat, index, Number(senderData.id), Number(receiverData.id));
       });
     }
-    const testingGetUserChat = await connection!.invoke(
-      'GetUserConversations',
-      Number(senderData.id),
-    );
   }, [connection, handleIncomingMessage, receiverData.id, senderData.id]);
 
   const onSend = useCallback(
@@ -80,7 +75,7 @@ const ChatScreen: React.FC = () => {
   const sendMessage = async (messageText: string) => {
     try {
       // Send the message to the server
-      await connection!.invoke('SendMessageToUser', messageText, null, Number(receiverData.id));
+      await connection!.invoke('SendMessageToUser', messageText, Number(receiverData.id), null);
       console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message: ', error);
@@ -90,11 +85,11 @@ const ChatScreen: React.FC = () => {
   // Handle the message reception via SignalR
   const handleReceivedMessage = useCallback(
     (
-      senderUser: number,
+      senderId: number,
       message: string,
-      connectionID: string,
-      receiverUser: number,
+      receiverId: number,
       messageId: number,
+      attachmentId: number,
     ) => {
       // Add the received message to the chat UI
       setMessages((prevMessages) =>

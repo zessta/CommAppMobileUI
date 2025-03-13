@@ -1,10 +1,10 @@
 import { useUser } from '@/components/UserContext';
-import { CHAT_TEST_DATA, SOCKET_URL } from '@/constants/Strings';
-import { ChatLastConversationList, UserInfo } from '@/constants/Types';
+import { SOCKET_URL } from '@/constants/Strings';
+import { ChatLastConversationList } from '@/constants/Types';
 import { useSignalR } from '@/services/signalRService';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const ContactScreen = () => {
   const connection = useSignalR(SOCKET_URL);
@@ -19,7 +19,7 @@ const ContactScreen = () => {
   }, [connection]);
 
   const getContactsList = async () => {
-    const chatLastConversations = await connection!.invoke('GetUserConversations', user?.id);
+    const chatLastConversations = await connection!.invoke('GetUserConversations');
     setContactsList(chatLastConversations);
   };
 

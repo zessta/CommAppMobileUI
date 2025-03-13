@@ -1,37 +1,22 @@
-import { SocketProvider } from '@/components/SocketContext';
-import signalRService from '@/services/signalRService';
+import { UserProvider } from '@/components/UserContext';
+import { SOCKET_URL } from '@/constants/Strings';
+import { useSignalR } from '@/services/signalRService';
+import * as SignalR from '@microsoft/signalr';
 import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
 import 'react-native-get-random-values'; // Required for UUID support
 import 'react-native-websocket'; // WebSocket polyfill for React Native
-import * as SignalR from '@microsoft/signalr';
-import { SOCKET_URL } from '@/constants/Strings';
-import { UserProvider } from '@/components/UserContext';
 
 // SplashScreen.preventAutoHideAsync();
 // SplashScreen.hideAsync();
 export default function RootLayout() {
-  useEffect(() => {
-    // Initialize SignalR connection when app starts
-    const initializeSignalR = async () => {
-      try {
-        await signalRService.connect(SOCKET_URL, {
-          // Optional connection options
-          transport: SignalR.HttpTransportType.WebSockets,
-        });
-      } catch (error) {
-        console.error('Root SignalR Error:', error);
-      }
-    };
+  const token =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiQ2hyb21lIiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGVudGl0eS9jbGFpbXMvZW1haWxhZGRyZXNzIjoiY2hyb21lQGV4YW1wbGUuY29tIiwiZXhwIjoxNzQxODcxNzUzLCJpc3MiOiJDb21tU2VydmVyIiwiYXVkIjoiQ29tbVNlcnZlckNsaWVudHMifQ.mzpExNanVd6i9vmRQT2ngAIYlX-V_QmaDmbfSU1Xz9M';
+  const connection = useSignalR(SOCKET_URL, {
+    // Optional connection options
+    transport: SignalR.HttpTransportType.WebSockets,
+    accessTokenFactory: () => token,
+  });
 
-    initializeSignalR();
-
-    return () => {
-      // Optional: Cleanup on unmount
-      signalRService.disconnect();
-    };
-  }, []);
   return (
     <UserProvider>
       <Stack>

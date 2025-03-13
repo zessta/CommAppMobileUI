@@ -1,19 +1,18 @@
-import React, { useState, useEffect, Dispatch, SetStateAction } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Button,
-  Modal,
-  SafeAreaView,
-  TouchableOpacity,
-} from 'react-native';
 import { useUser } from '@/components/UserContext';
+import { SOCKET_URL } from '@/constants/Strings';
 import { ChatLastConversationList, GroupList, UserInfo } from '@/constants/Types';
 import { useSignalR } from '@/services/signalRService';
-import { SOCKET_URL } from '@/constants/Strings';
 import Checkbox from 'expo-checkbox';
+import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import {
+  FlatList,
+  Modal,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 const AddMembersToGroup = ({
   setIsDialogVisible,
@@ -43,7 +42,7 @@ const AddMembersToGroup = ({
   const getContactsList = async () => {
     const chatUserLists = await connection!.invoke('GetUserList');
     setOnlineUsers(JSON.parse(chatUserLists));
-    const chatLastConversations = await connection!.invoke('GetUserConversations', user?.id);
+    const chatLastConversations = await connection!.invoke('GetUserConversations');
     setContactsList(chatLastConversations);
     const groupMembers = await connection!.invoke('GetGroupMembers', selectedGroup.GroupId);
     console.log('groupMembers', groupMembers);
@@ -78,7 +77,7 @@ const AddMembersToGroup = ({
     console.log('selectedConnectionId', selectedConnectionId);
 
     // Now invoke the 'AddMemberToGroup' method with the group name and selected connection IDs
-    await connection!.invoke('AddMemberToGroup', selectedGroup.GroupId, selectedConnectionId);
+    await connection!.invoke('AddMemberToGroup', selectedGroup.GroupId, Number(selectedContact));
 
     alert('Member added successfully');
     setIsDialogVisible(false); // Close the modal after adding the member

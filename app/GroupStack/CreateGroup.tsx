@@ -1,20 +1,19 @@
-import React, { useState, useEffect, Dispatch, SetStateAction } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  FlatList,
-  Button,
-  Modal,
-  SafeAreaView,
-  TouchableOpacity,
-} from 'react-native';
 import { useUser } from '@/components/UserContext';
+import { SOCKET_URL } from '@/constants/Strings';
 import { ChatLastConversationList, UserInfo } from '@/constants/Types';
 import { useSignalR } from '@/services/signalRService';
-import { SOCKET_URL } from '@/constants/Strings';
 import Checkbox from 'expo-checkbox';
+import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import {
+  FlatList,
+  Modal,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 const CreateGroup = ({
   setIsDialogVisible,
@@ -37,7 +36,7 @@ const CreateGroup = ({
   const getContactsList = async () => {
     const chatUserLists = await connection!.invoke('GetUserList');
     setOnlineUsers(JSON.parse(chatUserLists));
-    const chatLastConversations = await connection!.invoke('GetUserConversations', user?.id);
+    const chatLastConversations = await connection!.invoke('GetUserConversations');
     setContactsList(chatLastConversations);
   };
 
@@ -62,21 +61,20 @@ const CreateGroup = ({
       return;
     }
     // Find the selected users' connection IDs from the online users
-    const findSelectedConnectionIds = selectedContacts
+    const findSelectedUserIds = selectedContacts
       .map((id) => {
         const user = onlineUsers?.find((user) => user.UserId === Number(id));
-        return user ? user.ConnectionId : null; // Returns the connection ID or null if not found
+        return user ? user.UserId : null; // Returns the connection ID or null if not found
       })
-      .filter((connectionId) => connectionId !== null); // Remove null values if no connection ID is found
-    const findSenderConnectionId = onlineUsers?.find((users) => users.UserId === user?.id);
-    findSelectedConnectionIds.push(findSenderConnectionId?.ConnectionId!);
-    if (findSelectedConnectionIds.length === 0) {
+      .filter((userId) => userId !== null); // Remove null values if no connection ID is found
+    findSelectedUserIds.push(user?.id!);
+    if (findSelectedUserIds.length === 0) {
       alert('No selected users are online');
       return;
     }
 
     // Now invoke the 'CreateGroup' method with the group name and selected connection IDs
-    await connection!.invoke('CreateGroup', groupName, findSelectedConnectionIds);
+    await connection!.invoke('CreateGroup', groupName, findSelectedUserIds);
 
     alert('Group created successfully');
     setIsDialogVisible(false); // Close the modal after creation

@@ -139,7 +139,6 @@ const GroupChatScreen: React.FC = () => {
       <Stack.Screen
         options={{
           title: selectedGroup.GroupName,
-          headerStyle: { backgroundColor: 'yellow', flex: 1 },
           headerLargeStyle: { backgroundColor: 'blue' },
           headerLeft: () => (
             <View style={styles.headerLeft}>
@@ -218,7 +217,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     width: '50%',
-    backgroundColor: 'green',
   },
   addButton: {
     justifyContent: 'center',
