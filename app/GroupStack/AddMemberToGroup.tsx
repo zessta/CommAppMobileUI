@@ -1,5 +1,14 @@
 import React, { useState, useEffect, Dispatch, SetStateAction } from 'react';
-import { View, Text, StyleSheet, FlatList, Button } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Button,
+  Modal,
+  SafeAreaView,
+  TouchableOpacity,
+} from 'react-native';
 import { useUser } from '@/components/UserContext';
 import { ChatLastConversationList, GroupList, UserInfo } from '@/constants/Types';
 import { useSignalR } from '@/services/signalRService';
@@ -24,11 +33,9 @@ const AddMembersToGroup = ({
       getContactsList();
       connection.on('GroupMemberAdded', (groupId: number, newMember: string) => {
         console.log('GroupMemberAdded:', groupId, newMember);
-        // alert(`You have been added to the group: ${group.GroupName}`);
       });
       connection.on('AddedToGroup', (groupId: number, groupName: string) => {
         console.log('AddedToGroup:', groupId, groupName);
-        // alert(`A new member has been added to the group: ${group.GroupName}`);
       });
     }
   }, [connection]);
@@ -74,93 +81,132 @@ const AddMembersToGroup = ({
     await connection!.invoke('AddMemberToGroup', selectedGroup.GroupId, selectedConnectionId);
 
     alert('Member added successfully');
-    // setIsDialogVisible(false); // Close the modal after adding the member
+    setIsDialogVisible(false); // Close the modal after adding the member
   };
 
   return (
-    <View style={styles.scrollContainer}>
-      <View style={styles.dialogContainer}>
-        <Text style={styles.dialogTitle}>Add Member to Group</Text>
+    <Modal
+      visible={true}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setIsDialogVisible(false)}>
+      <SafeAreaView style={styles.modalContainer}>
+        <View style={styles.dialogContainer}>
+          <Text style={styles.dialogTitle}>Add Member to Group</Text>
 
-        {/* Contacts List - Allowing users to select a member */}
-        <Text style={styles.label}>Select a Member</Text>
-        <FlatList
-          data={contactsList}
-          renderItem={({ item }) => (
-            <View style={styles.contactCard}>
-              <Checkbox
-                value={selectedContact === item.participants?.[0]?.userId.toString()} // Check if this contact is selected
-                onValueChange={() =>
-                  toggleContactSelection(item.participants?.[0]?.userId.toString())
-                } // Toggle selection
-                style={styles.checkbox}
-              />
-              <Text style={styles.contactName}>{item.participants?.[0]?.userName}</Text>
-            </View>
-          )}
-          keyExtractor={(item) => item.participants?.[0]?.userId.toString()}
-        />
+          {/* Contacts List - Allowing users to select a member */}
+          <Text style={styles.label}>Select a Member</Text>
+          <FlatList
+            data={contactsList}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.contactCard,
+                  selectedContact === item.participants?.[0]?.userId.toString() &&
+                    styles.selectedContact,
+                ]}
+                onPress={() => toggleContactSelection(item.participants?.[0]?.userId.toString())}>
+                <Checkbox
+                  value={selectedContact === item.participants?.[0]?.userId.toString()}
+                  onValueChange={() =>
+                    toggleContactSelection(item.participants?.[0]?.userId.toString())
+                  }
+                  style={styles.checkbox}
+                />
+                <Text style={styles.contactName}>{item.participants?.[0]?.userName}</Text>
+              </TouchableOpacity>
+            )}
+            keyExtractor={(item) => item.participants?.[0]?.userId.toString()}
+            contentContainerStyle={styles.contactListContainer}
+          />
 
-        {/* Buttons */}
-        <View style={styles.buttonContainer}>
-          <Button title="Add Member" onPress={addMemberToGroup} />
-          <Button title="Cancel" onPress={() => setIsDialogVisible(false)} />
+          {/* Buttons */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.addButton} onPress={addMemberToGroup}>
+              <Text style={styles.buttonText}>Add Member</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setIsDialogVisible(false)}>
+              <Text style={styles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </View>
+      </SafeAreaView>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-    paddingBottom: 20, // Ensure scrollable space at the bottom
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent overlay
   },
   dialogContainer: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
+    backgroundColor: '#fff',
+    borderRadius: 10,
     padding: 20,
-    width: '100%',
+    width: '90%',
+    maxWidth: 400,
+    alignItems: 'stretch',
   },
   dialogTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'left',
-    width: '100%',
   },
   label: {
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 10,
-    width: '100%',
+  },
+  contactListContainer: {
+    marginBottom: 20,
   },
   contactCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    marginBottom: 10,
+    padding: 15,
     borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    width: '100%',
+    marginBottom: 10,
+    backgroundColor: '#f7f7f7',
+    borderColor: '#ddd',
+    borderWidth: 1,
+  },
+  selectedContact: {
+    backgroundColor: '#e0f7fa', // Highlight selected contact
   },
   contactName: {
     fontSize: 16,
     marginLeft: 10,
-    width: '80%', // Allow the name to take up most of the space
+    flex: 1, // Allow the name to take up the remaining space
   },
   checkbox: {
     marginRight: 10,
   },
   buttonContainer: {
-    marginTop: 20,
-    width: '100%',
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  addButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+  },
+  cancelButton: {
+    backgroundColor: '#dc3545',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

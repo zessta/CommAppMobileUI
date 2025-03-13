@@ -8,6 +8,7 @@ import {
   Button,
   Modal,
   SafeAreaView,
+  TouchableOpacity,
 } from 'react-native';
 import { useUser } from '@/components/UserContext';
 import { ChatLastConversationList, UserInfo } from '@/constants/Types';
@@ -120,8 +121,12 @@ const CreateGroup = ({
 
           {/* Buttons */}
           <View style={styles.buttonContainer}>
-            <Button title="Save" onPress={createNewGroup} />
-            <Button title="Cancel" onPress={() => setIsDialogVisible(false)} />
+            <TouchableOpacity style={styles.addButton} onPress={createNewGroup}>
+              <Text style={styles.buttonText}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setIsDialogVisible(false)}>
+              <Text style={styles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </SafeAreaView>
@@ -190,6 +195,24 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-around',
+  },
+  addButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+  },
+  cancelButton: {
+    backgroundColor: '#dc3545',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

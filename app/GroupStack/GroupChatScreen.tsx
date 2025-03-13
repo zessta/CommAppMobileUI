@@ -202,20 +202,7 @@ const GroupChatScreen: React.FC = () => {
           inverted
         />
       ) : (
-        <Modal
-          visible={isDialogVisible}
-          onRequestClose={() => setIsDialogVisible(false)}
-          animationType="slide"
-          transparent>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <AddMembersToGroup
-                setIsDialogVisible={setIsDialogVisible}
-                selectedGroup={selectedGroup}
-              />
-            </View>
-          </View>
-        </Modal>
+        <AddMembersToGroup setIsDialogVisible={setIsDialogVisible} selectedGroup={selectedGroup} />
       )}
     </View>
   );
