@@ -5,10 +5,9 @@ import {
   TextInput,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   Button,
-  ScrollView,
   Modal,
+  SafeAreaView,
 } from 'react-native';
 import { useUser } from '@/components/UserContext';
 import { ChatLastConversationList, UserInfo } from '@/constants/Types';
@@ -27,6 +26,7 @@ const CreateGroup = ({
   const [contactsList, setContactsList] = useState<ChatLastConversationList[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]); // To track selected contacts
   const [onlineUsers, setOnlineUsers] = useState<UserInfo[]>([]);
+
   useEffect(() => {
     if (connection) {
       getContactsList();
@@ -82,68 +82,74 @@ const CreateGroup = ({
   };
 
   return (
-    <View style={styles.scrollContainer}>
-      <View style={styles.dialogContainer}>
-        <Text style={styles.dialogTitle}>Create New Group</Text>
+    <Modal
+      visible={true} // Ensure the modal is always visible when calling CreateGroup
+      animationType="slide"
+      transparent
+      onRequestClose={() => setIsDialogVisible(false)}>
+      <SafeAreaView style={styles.modalContainer}>
+        <View style={styles.dialogContainer}>
+          <Text style={styles.dialogTitle}>Create New Group</Text>
 
-        {/* Group Name Input */}
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Group Name"
-          value={groupName}
-          onChangeText={setGroupName}
-        />
+          {/* Group Name Input */}
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Group Name"
+            value={groupName}
+            onChangeText={setGroupName}
+          />
 
-        {/* Contacts List - Allowing users to select members */}
-        <Text style={styles.label}>Select Members</Text>
-        <FlatList
-          data={contactsList}
-          renderItem={({ item }) => (
-            <View style={styles.contactCard}>
-              <Checkbox
-                value={selectedContacts.includes(item.participants?.[0]?.userId.toString())}
-                onValueChange={() =>
-                  toggleContactSelection(item.participants?.[0]?.userId.toString())
-                }
-                style={styles.checkbox}
-              />
-              <Text style={styles.contactName}>{item.participants?.[0]?.userName}</Text>
-            </View>
-          )}
-          keyExtractor={(item) => item.participants?.[0]?.userId.toString()}
-        />
+          {/* Contacts List - Allowing users to select members */}
+          <Text style={styles.label}>Select Members</Text>
+          <FlatList
+            data={contactsList}
+            renderItem={({ item }) => (
+              <View style={styles.contactCard}>
+                <Checkbox
+                  value={selectedContacts.includes(item.participants?.[0]?.userId.toString())}
+                  onValueChange={() =>
+                    toggleContactSelection(item.participants?.[0]?.userId.toString())
+                  }
+                  style={styles.checkbox}
+                />
+                <Text style={styles.contactName}>{item.participants?.[0]?.userName}</Text>
+              </View>
+            )}
+            keyExtractor={(item) => item.participants?.[0]?.userId.toString()}
+          />
 
-        {/* Buttons */}
-        <View style={styles.buttonContainer}>
-          <Button title="Save" onPress={createNewGroup} />
-          <Button title="Cancel" onPress={() => setIsDialogVisible(false)} />
+          {/* Buttons */}
+          <View style={styles.buttonContainer}>
+            <Button title="Save" onPress={createNewGroup} />
+            <Button title="Cancel" onPress={() => setIsDialogVisible(false)} />
+          </View>
         </View>
-      </View>
-    </View>
+      </SafeAreaView>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  modal: {
+  modalContainer: {
     flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingBottom: 20, // Ensure scrollable space at the bottom
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent overlay
   },
   dialogContainer: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
+    width: '80%',
     padding: 20,
-    width: '100%',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    elevation: 5,
   },
   dialogTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'left',
-    width: '100%',
   },
   input: {
     height: 40,
@@ -158,13 +164,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 10,
-    width: '100%',
   },
   contactCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    // backgroundColor: '#f8f8f8',
     marginBottom: 10,
     borderRadius: 8,
     shadowColor: '#000',
@@ -176,7 +180,7 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 16,
     marginLeft: 10,
-    width: '80%', // Allow the name to take up most of the space
+    width: '80%',
   },
   checkbox: {
     marginRight: 10,

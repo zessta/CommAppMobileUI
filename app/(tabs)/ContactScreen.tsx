@@ -24,9 +24,11 @@ const ContactScreen = () => {
   };
 
   // Function to filter the contacts based on search query
-  const filteredContacts = contactsList.filter((contact) =>
-    contact.participants[0].userName.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredContacts = contactsList?.length
+    ? contactsList.filter((contact) =>
+        contact.participants[0]?.userName.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : [];
 
   // Function to handle navigation on clicking a contact card
   const handleContactPress = (contactId: ChatLastConversationList) => {

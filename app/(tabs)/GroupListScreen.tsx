@@ -1,14 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Modal,
-  Button,
-} from 'react-native';
+import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { useUser } from '@/components/UserContext'; // Assuming you have user context
 import { Group, GroupList, UserInfo } from '@/constants/Types'; // Assuming you have a Group type
 import { useSignalR } from '@/services/signalRService';
@@ -84,18 +75,7 @@ const GroupListScreen = () => {
         />
       ) : null}
 
-      {/* Modal/Dialog for showing group details or creating a group */}
-      <Modal
-        visible={isDialogVisible}
-        onRequestClose={() => setIsDialogVisible(false)}
-        animationType="slide"
-        transparent>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <CreateGroup setIsDialogVisible={setIsDialogVisible} />
-          </View>
-        </View>
-      </Modal>
+      {isDialogVisible ? <CreateGroup setIsDialogVisible={setIsDialogVisible} /> : null}
     </View>
   );
 };
