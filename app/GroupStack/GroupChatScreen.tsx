@@ -40,17 +40,25 @@ const GroupChatScreen: React.FC = () => {
 
   useEffect(() => {
     if (connection) {
-      console.log('GroupChatScreen connection established');
       connection.on('GroupMemberAdded', (groupId: number, newMember: string) => {
         console.log('GroupMemberAdded:', groupId, newMember);
         // alert(`You have been added to the group: ${group.GroupName}`);
       });
+
       connection.on('AddedToGroup', (groupId: number, groupName: string) => {
         console.log('AddedToGroup:', groupId, groupName);
         // alert(`A new member has been added to the group: ${group.GroupName}`);
       });
+
       getGroupChatHistory();
     }
+
+    return () => {
+      if (connection) {
+        connection.off('GroupMemberAdded');
+        connection.off('AddedToGroup');
+      }
+    };
   }, [connection]);
 
   const getGroupChatHistory = async () => {
@@ -59,25 +67,29 @@ const GroupChatScreen: React.FC = () => {
     const groupMembers = await connection!.invoke('GetGroupMembers', selectedGroup.GroupId);
     console.log('groupMembers chatscreeb', groupMembers);
     if (groupChat.length) {
-      groupChat.forEach((chat: ChatMessageServer) => {
-        handleIncomingMessage(chat);
-      });
+      const formattedMessages = groupChat.map((chat: ChatMessageServer) => ({
+        _id: chat.id || uuidv4(),
+        text: chat.messageText,
+        createdAt: new Date(chat.createdOn).getTime(),
+        user: { _id: chat.senderId, name: 'Test' }, // Replace with actual user data
+      }));
+      setMessages((prevMessages) => GiftedChat.append(prevMessages, formattedMessages));
     }
   };
 
   const onSend = useCallback(
     (newMessages: IMessage[] = []) => {
-      setMessages((prevMessages) => GiftedChat.append(prevMessages, newMessages));
+      // Check if the message is being sent by the current user
+      if (newMessages.length > 0) {
+        const message = newMessages[0];
 
-      if (!connection || connection.state !== 'Connected') {
-        console.error('Cannot send message: SignalR connection is not established.');
-        return;
+        // Send the message via SignalR
+        if (connection && connection.state === 'Connected') {
+          sendMessage(message.text);
+        }
       }
-
-      const message = newMessages[0];
-      sendMessage(message.text);
     },
-    [connection],
+    [connection, user],
   );
 
   const sendMessage = async (messageText: string) => {
@@ -90,21 +102,19 @@ const GroupChatScreen: React.FC = () => {
   };
 
   const handleReceivedMessage = useCallback(
-    (userName: string, message: string, groupName: string, groupId: number) => {
-      console.log('handleReceivedMessage', userName, message, groupName, groupId);
-      const userIdByUserName = user?.name === userName ? user.id : groupId;
+    (senderName: string, senderId: number, message: string, groupName: string, groupId: number) => {
       setMessages((prevMessages) =>
         GiftedChat.append(prevMessages, [
           {
             _id: groupId || uuidv4(), // Use unique ID from server or generate if not available
             text: message,
             createdAt: new Date().getTime(),
-            user: { _id: userIdByUserName, name: userName }, // Replace with actual user data
+            user: { _id: senderId, name: senderName }, // Replace with actual user data
           },
         ]),
       );
     },
-    [],
+    [user],
   );
 
   useEffect(() => {
@@ -135,12 +145,12 @@ const GroupChatScreen: React.FC = () => {
     console.log('Add Member clicked');
     // Navigate to the screen where you can add members
   };
-  console.log('user', user);
+
   return (
     <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: 'Group Chat',
+          title: selectedGroup.GroupName,
           headerLargeStyle: { backgroundColor: 'blue' },
           headerLeft: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
