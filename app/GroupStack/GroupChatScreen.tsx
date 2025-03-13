@@ -42,12 +42,10 @@ const GroupChatScreen: React.FC = () => {
     if (connection) {
       connection.on('GroupMemberAdded', (groupId: number, newMember: string) => {
         console.log('GroupMemberAdded:', groupId, newMember);
-        // alert(`You have been added to the group: ${group.GroupName}`);
       });
 
       connection.on('AddedToGroup', (groupId: number, groupName: string) => {
         console.log('AddedToGroup:', groupId, groupName);
-        // alert(`A new member has been added to the group: ${group.GroupName}`);
       });
 
       getGroupChatHistory();
@@ -63,15 +61,13 @@ const GroupChatScreen: React.FC = () => {
 
   const getGroupChatHistory = async () => {
     const groupChat = await connection!.invoke('GetGroupChatHistory', selectedGroup.GroupId);
-    console.log('groupChat', groupChat);
     const groupMembers = await connection!.invoke('GetGroupMembers', selectedGroup.GroupId);
-    console.log('groupMembers chatscreeb', groupMembers);
     if (groupChat.length) {
       const formattedMessages = groupChat.map((chat: ChatMessageServer) => ({
         _id: chat.id || uuidv4(),
         text: chat.messageText,
         createdAt: new Date(chat.createdOn).getTime(),
-        user: { _id: chat.senderId, name: 'Test' }, // Replace with actual user data
+        user: { _id: chat.senderId, name: 'Test' },
       }));
       setMessages((prevMessages) => GiftedChat.append(prevMessages, formattedMessages));
     }
@@ -79,11 +75,8 @@ const GroupChatScreen: React.FC = () => {
 
   const onSend = useCallback(
     (newMessages: IMessage[] = []) => {
-      // Check if the message is being sent by the current user
       if (newMessages.length > 0) {
         const message = newMessages[0];
-
-        // Send the message via SignalR
         if (connection && connection.state === 'Connected') {
           sendMessage(message.text);
         }
@@ -95,7 +88,6 @@ const GroupChatScreen: React.FC = () => {
   const sendMessage = async (messageText: string) => {
     try {
       await connection!.invoke('SendMessageToGroup', selectedGroup.GroupId, messageText);
-      console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message: ', error);
     }
@@ -106,10 +98,10 @@ const GroupChatScreen: React.FC = () => {
       setMessages((prevMessages) =>
         GiftedChat.append(prevMessages, [
           {
-            _id: groupId || uuidv4(), // Use unique ID from server or generate if not available
+            _id: groupId || uuidv4(),
             text: message,
             createdAt: new Date().getTime(),
-            user: { _id: senderId, name: senderName }, // Replace with actual user data
+            user: { _id: senderId, name: senderName },
           },
         ]),
       );
@@ -120,14 +112,12 @@ const GroupChatScreen: React.FC = () => {
   useEffect(() => {
     if (connection) {
       connection.on('ReceiveGroupMessage', handleReceivedMessage);
-
       return () => {
         connection.off('ReceiveGroupMessage', handleReceivedMessage);
       };
     }
   }, [connection, handleReceivedMessage]);
 
-  // Render a placeholder message when there are no messages
   const renderFooter = () => {
     if (messages.length === 0) {
       return (
@@ -140,10 +130,8 @@ const GroupChatScreen: React.FC = () => {
   };
 
   const handleAddMember = () => {
-    // Implement the functionality to add a new member
     setIsDialogVisible(true);
     console.log('Add Member clicked');
-    // Navigate to the screen where you can add members
   };
 
   return (
@@ -151,42 +139,32 @@ const GroupChatScreen: React.FC = () => {
       <Stack.Screen
         options={{
           title: selectedGroup.GroupName,
+          headerStyle: { backgroundColor: 'yellow', flex: 1 },
           headerLargeStyle: { backgroundColor: 'blue' },
           headerLeft: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginLeft: 10,
-                }}
-                onPress={() => router.back()} // Use router.back() for back navigation in Expo Router
-              >
+            <View style={styles.headerLeft}>
+              <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
                 <IconSymbol size={28} name="arrow-back" color={'black'} />
               </TouchableOpacity>
               <Image
                 source={{
                   uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=Test`,
                 }}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  gap: 10,
-                  rowGap: 10,
-                  marginRight: 10, // Adds space between the avatar and the title
-                }}
+                style={styles.avatar}
               />
             </View>
           ),
           headerRight: () => (
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={handleAddMember} // Handle the button press
-            >
-              <Text style={styles.addButtonText}>Add Member</Text>
-            </TouchableOpacity>
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.addButton} onPress={handleAddMember}>
+                <IconSymbol size={28} name="poll" color={'black'} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addButton} onPress={handleAddMember}>
+                <IconSymbol size={28} name="adduser" color={'black'} />
+              </TouchableOpacity>
+            </View>
           ),
+          headerTitleStyle: styles.headerTitle,
         }}
       />
       {!isDialogVisible ? (
@@ -198,7 +176,7 @@ const GroupChatScreen: React.FC = () => {
             name: user?.name,
             avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${user?.name}`,
           }}
-          renderFooter={renderFooter} // Add footer to show the placeholder
+          renderFooter={renderFooter}
           inverted
         />
       ) : (
@@ -222,31 +200,40 @@ const styles = StyleSheet.create({
     color: '#aaa',
     fontStyle: 'italic',
   },
-  addButton: {
-    paddingRight: 20,
-    justifyContent: 'center',
+  headerLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 10,
+    flex: 1,
+  },
+  headerButton: {
     marginRight: 10,
   },
-  addButtonText: {
-    color: 'blue',
-    fontWeight: 'bold',
-    fontSize: 16,
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
-  modalContainer: {
+  headerRight: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    width: '50%',
+    backgroundColor: 'green',
+  },
+  addButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  headerTitle: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    width: '80%',
-    padding: 20,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 5,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 18,
+    color: 'black',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
   },
 });
 
