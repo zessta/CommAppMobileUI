@@ -1,6 +1,6 @@
-// src/services/signalRService.ts
 import * as signalR from '@microsoft/signalr';
 import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class SignalRService {
   private connection: signalR.HubConnection | null = null;
@@ -86,9 +86,20 @@ export const useSignalR = (hubUrl: string, options?: signalR.IHttpConnectionOpti
 
     const initializeConnection = async () => {
       try {
-        const conn = await signalRService.connect(hubUrl, options);
-        if (mounted) {
-          setConnection(conn);
+        // Check if we have a valid token before connecting
+        const token = await AsyncStorage.getItem('authToken');
+        if (token) {
+          const customOptions = {
+            transport: signalR.HttpTransportType.WebSockets,
+            accessTokenFactory: () => token,
+          };
+          // Only proceed with the connection if token exists
+          const conn = await signalRService.connect(hubUrl, customOptions);
+          if (mounted) {
+            setConnection(conn);
+          }
+        } else {
+          console.log('No token found, skipping SignalR connection');
         }
       } catch (error) {
         console.error('SignalR Hook Error:', error);
@@ -106,7 +117,7 @@ export const useSignalR = (hubUrl: string, options?: signalR.IHttpConnectionOpti
       // Only disconnect if you want to close connection when component unmounts
       // signalRService.disconnect();
     };
-  }, [hubUrl]);
+  }, [hubUrl, options]); // Dependencies include hubUrl and options
 
   return connection;
 };

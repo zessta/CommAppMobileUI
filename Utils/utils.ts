@@ -32,3 +32,9 @@ export const formattedTimeString = (time: string) => {
   }
   return formattedTime;
 };
+
+export function extractUsername(email: string): string {
+  // Split the email at the "@" character and return the first part
+  const username = email.split('@')[0];
+  return username;
+}

@@ -88,6 +88,7 @@ const GroupChatScreen: React.FC = () => {
   const sendMessage = async (messageText: string) => {
     try {
       await connection!.invoke('SendMessageToGroup', selectedGroup.GroupId, messageText);
+      console.log('coming here for sending mesg');
     } catch (error) {
       console.error('Error sending message: ', error);
     }
@@ -95,6 +96,7 @@ const GroupChatScreen: React.FC = () => {
 
   const handleReceivedMessage = useCallback(
     (senderName: string, senderId: number, message: string, groupName: string, groupId: number) => {
+      console.log('recived mesaage', senderName, senderId, message, groupName, groupId);
       setMessages((prevMessages) =>
         GiftedChat.append(prevMessages, [
           {

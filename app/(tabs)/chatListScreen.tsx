@@ -59,7 +59,6 @@ export interface GroupInfo {
 }
 
 const ChatListScreen = () => {
-  const { userInputName } = useLocalSearchParams<ChatScreenProps>(); // Extract the parameter
   const [searchText, setSearchText] = useState('');
   const [chatUsers, setChatUsers] = useState<ChatLastConversationList[]>([]);
   const connection = useSignalR(SOCKET_URL);
