@@ -1,6 +1,6 @@
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatLastConversationList, GroupList, UserInfo } from '@/constants/Types';
+import { ChatLastConversationList, Group, UserInfo } from '@/constants/Types';
 import { useSignalR } from '@/services/signalRService';
 import Checkbox from 'expo-checkbox';
 import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
@@ -19,7 +19,7 @@ const AddMembersToGroup = ({
   selectedGroup,
 }: {
   setIsDialogVisible: Dispatch<SetStateAction<boolean>>;
-  selectedGroup: GroupList;
+  selectedGroup: Group;
 }) => {
   const { user } = useUser(); // Access the user from context
   const connection = useSignalR(SOCKET_URL);
@@ -44,7 +44,7 @@ const AddMembersToGroup = ({
     setOnlineUsers(JSON.parse(chatUserLists));
     const chatLastConversations = await connection!.invoke('GetUserConversations');
     setContactsList(chatLastConversations);
-    const groupMembers = await connection!.invoke('GetGroupMembers', selectedGroup.GroupId);
+    const groupMembers = await connection!.invoke('GetGroupMembers', selectedGroup.groupId);
     console.log('groupMembers', groupMembers);
   };
 
@@ -77,7 +77,7 @@ const AddMembersToGroup = ({
     console.log('selectedConnectionId', selectedConnectionId);
 
     // Now invoke the 'AddMemberToGroup' method with the group name and selected connection IDs
-    await connection!.invoke('AddMemberToGroup', selectedGroup.GroupId, Number(selectedContact));
+    await connection!.invoke('AddMemberToGroup', selectedGroup.groupId, Number(selectedContact));
 
     alert('Member added successfully');
     setIsDialogVisible(false); // Close the modal after adding the member

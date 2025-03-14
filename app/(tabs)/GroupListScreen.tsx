@@ -1,41 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { useUser } from '@/components/UserContext'; // Assuming you have user context
-import { Group, GroupList, UserInfo } from '@/constants/Types'; // Assuming you have a Group type
-import { useSignalR } from '@/services/signalRService';
-import { SOCKET_URL } from '@/constants/Strings';
 import CreateGroup from '@/app/GroupStack/CreateGroup';
+import { useUser } from '@/components/UserContext'; // Assuming you have user context
+import { SOCKET_URL } from '@/constants/Strings';
+import { Group } from '@/constants/Types'; // Assuming you have a Group type
+import { getGroupsListByUserId } from '@/services/api/auth';
+import { useSignalR } from '@/services/signalRService';
 import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const GroupListScreen = () => {
   const { user } = useUser(); // Access user from context
   const connection = useSignalR(SOCKET_URL);
-  const [groupsList, setGroupsList] = useState<GroupList[]>([]);
+  const [groupsList, setGroupsList] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
 
   useEffect(() => {
-    if (connection) {
-      connection!.on('UpdateGroupList', (groupListJson: string) => {
-        setGroupsList(JSON.parse(groupListJson));
-      });
-      getGroupList();
-    }
-  }, [connection]);
+    getGroupList();
+  }, []);
 
   const getGroupList = async () => {
-    await connection!.invoke('GetGroups');
+    const groupsListData: Group[] = await getGroupsListByUserId(user?.id!);
+    console.log('groupsListData', groupsListData);
+    setGroupsList(groupsListData);
   };
 
   const filteredGroupsList = groupsList?.filter((group) =>
-    group?.GroupName.toLowerCase().includes(searchQuery.toLowerCase()),
+    group?.groupName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const handleCreateGroup = () => {
     setIsDialogVisible(true);
   };
 
-  const renderGroup = ({ item }: { item: GroupList }) => (
+  const renderGroup = ({ item }: { item: Group }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() =>
@@ -44,7 +42,7 @@ const GroupListScreen = () => {
           params: { selectedGroup: JSON.stringify(item) },
         })
       }>
-      <Text style={styles.groupName}>{item.GroupName}</Text>
+      <Text style={styles.groupName}>{item.groupName}</Text>
     </TouchableOpacity>
   );
 
@@ -69,7 +67,7 @@ const GroupListScreen = () => {
         <FlatList
           data={filteredGroupsList}
           renderItem={renderGroup}
-          keyExtractor={(item) => item?.GroupId?.toString() || Math.random().toString()}
+          keyExtractor={(item) => item?.groupName?.toString() || Math.random().toString()}
           contentContainerStyle={styles.scrollView}
           ListEmptyComponent={<Text style={styles.noGroupsText}>No groups found</Text>}
         />

@@ -1,6 +1,8 @@
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatMessageServer, UserInfo } from '@/constants/Types';
+import { ChatMessageServer } from '@/constants/Types';
+import { getUsersChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
+import * as signalR from '@microsoft/signalr';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -11,57 +13,53 @@ import { IconSymbol } from '../../components/ui/IconSymbol';
 type ChatScreenProps = {
   receiverData: string;
   senderData: string;
+  conversationId: string;
 };
 
 const ChatScreen: React.FC = () => {
   const searchParams = useLocalSearchParams<ChatScreenProps>();
   const receiverData: ChatDataProps = JSON.parse(searchParams.receiverData);
   const senderData: ChatDataProps = JSON.parse(searchParams.senderData);
+  const conversationId: number = Number(JSON.parse(searchParams.conversationId));
   const [messages, setMessages] = useState<IMessage[]>([]);
-  const [users, setUsers] = useState<UserInfo[]>([]);
-  const [groups, setGroups] = useState<string[]>([]);
   const connection = useSignalR(SOCKET_URL);
 
   const handleIncomingMessage = useCallback(
     (chatMes: ChatMessageServer, index: number, senderId: number, receiverId: number) => {
-      const chatUser = chatMes.senderId === senderId ? senderId : receiverId;
-      const chatUserName = chatMes.senderId === senderId ? senderData.name : receiverData.name;
+      const chatUserName = chatMes.senderId === senderId ? senderData?.name : receiverData.name;
       setMessages((prevMessages) =>
         GiftedChat.append(prevMessages, [
           {
-            _id: index,
+            _id: chatMes.messageId,
             text: chatMes.messageText,
             createdAt: Number(chatMes.createdOn),
-            user: { _id: chatUser, name: chatUserName },
+            user: { _id: chatMes.senderId, name: chatUserName },
           },
         ]),
       );
     },
-    [receiverData.name, senderData.name],
+    [receiverData.name, senderData?.name],
   );
 
   const setupConnection = useCallback(async () => {
-    const testing = await connection!.invoke('GetUserList');
-    const parsedTesting = JSON.parse(testing);
-    setUsers(parsedTesting);
+    if (!connection) return;
+    const userChatHistoryData: ChatMessageServer[] = await getUsersChatHistory(conversationId);
 
-    const chatHisotry = await connection!.invoke(
-      'GetChatHistory',
-      Number(senderData.id),
-      Number(receiverData.id),
-    );
-    if (chatHisotry.length) {
-      chatHisotry.forEach((chat: ChatMessageServer, index: number) => {
+    if (userChatHistoryData.length) {
+      userChatHistoryData.reverse().forEach((chat: ChatMessageServer, index: number) => {
         handleIncomingMessage(chat, index, Number(senderData.id), Number(receiverData.id));
       });
     }
-  }, [connection, handleIncomingMessage, receiverData.id, senderData.id]);
+
+    // Listen for incoming messages
+    connection.on('ReceiveMessage', handleReceivedMessage);
+  }, [connection, handleIncomingMessage, receiverData.id, senderData.id, conversationId]);
 
   const onSend = useCallback(
     (newMessages: IMessage[] = []) => {
       setMessages((prevMessages) => GiftedChat.append(prevMessages, newMessages));
 
-      if (!connection || connection.state !== 'Connected') {
+      if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
         console.error('Cannot send message: SignalR connection is not established.');
         return;
       }
@@ -69,20 +67,18 @@ const ChatScreen: React.FC = () => {
       const message = newMessages[0];
       sendMessage(message.text);
     },
-    [connection, users],
+    [connection, senderData, receiverData],
   );
 
   const sendMessage = async (messageText: string) => {
     try {
-      // Send the message to the server
-      await connection!.invoke('SendMessageToUser', messageText, Number(receiverData.id), null);
+      await connection!.invoke('SendMessageToUser', messageText, receiverData.id, 1);
       console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message: ', error);
     }
   };
 
-  // Handle the message reception via SignalR
   const handleReceivedMessage = useCallback(
     (
       senderId: number,
@@ -95,7 +91,7 @@ const ChatScreen: React.FC = () => {
       setMessages((prevMessages) =>
         GiftedChat.append(prevMessages, [
           {
-            _id: Math.random(),
+            _id: messageId, // Ensure unique message IDs
             text: message,
             createdAt: Date.now(),
             user: { _id: receiverData.id, name: receiverData.name },
@@ -110,12 +106,11 @@ const ChatScreen: React.FC = () => {
     if (connection) {
       setupConnection();
 
-      // Listen for incoming messages
-      connection.on('ReceiveMessage', handleReceivedMessage);
-
-      // Cleanup when the component is unmounted
       return () => {
-        connection.off('ReceiveMessage', handleReceivedMessage);
+        if (connection) {
+          // Cleanup the SignalR connection when the component unmounts
+          connection.off('ReceiveMessage', handleReceivedMessage);
+        }
       };
     }
   }, [connection, setupConnection, handleReceivedMessage]);
@@ -160,8 +155,8 @@ const ChatScreen: React.FC = () => {
         onSend={(messages) => onSend(messages)}
         user={{
           _id: Number(senderData.id),
-          name: senderData.name,
-          avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData.name}`,
+          name: senderData?.name,
+          avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData?.name}`,
         }}
       />
     </View>

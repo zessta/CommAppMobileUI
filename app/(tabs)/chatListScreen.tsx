@@ -1,10 +1,11 @@
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatLastConversationList, UserInfo } from '@/constants/Types';
+import { ChatConversationType, UserInfo } from '@/constants/Types';
+import { getLastChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -60,7 +61,7 @@ export interface GroupInfo {
 
 const ChatListScreen = () => {
   const [searchText, setSearchText] = useState('');
-  const [chatUsers, setChatUsers] = useState<ChatLastConversationList[]>([]);
+  const [userChatHistory, setUserChatHistory] = useState<ChatConversationType[]>([]);
   const connection = useSignalR(SOCKET_URL);
   const router = useRouter();
   const { user } = useUser(); // Access the user from context
@@ -73,7 +74,7 @@ const ChatListScreen = () => {
   }, [connection]);
 
   // Filter chat data based on the search text
-  const filteredChats = chatUsers?.filter(
+  const filteredChats = userChatHistory?.filter(
     (chat) =>
       chat.participants?.[0]?.userName.toLowerCase().includes(searchText.toLowerCase()) ||
       chat?.lastMessage?.toLowerCase?.().includes(searchText.toLowerCase()),
@@ -83,20 +84,16 @@ const ChatListScreen = () => {
   const joinChat = async () => {
     try {
       await connection!.invoke('NewUser', user?.name);
-
-      const chatUserLists = await connection!.invoke('GetUserList');
-      console.log('chatUserLists', chatUserLists);
-      const parsedChatUserLists = JSON.parse(chatUserLists);
-      const chatLastConversations = await connection!.invoke('GetUserConversations');
-      console.log('chatLastConversations', chatLastConversations);
-      setChatUsers(chatLastConversations);
+      const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.id!);
+      const filterOutGroups = usersLastChatHistory.filter((chat) => chat.groupId === null);
+      setUserChatHistory(filterOutGroups);
     } catch (error) {
       console.error('Error joining chat:', error);
     }
   };
   console.log('filteredChats', filteredChats);
 
-  const receiverDataObject = (item: ChatLastConversationList) => {
+  const receiverDataObject = (item: ChatConversationType) => {
     return JSON.stringify({
       id: item.participants[0].userId,
       name: item.participants[0].userName,
@@ -134,11 +131,15 @@ const ChatListScreen = () => {
                 params: {
                   receiverData: receiverDataObject(item),
                   senderData: JSON.stringify(user),
+                  conversationId: item.conversationId.toString(),
                 },
               })
             }>
             <Text style={styles.name}>{item.participants[0].userName}</Text>
-            <Text style={styles.message}>{item.lastMessage}</Text>
+            <Text style={styles.message}>
+              {item.lastMessageSenderId === user?.id ? 'You' : item.lastMessageSenderName}:{' '}
+              {item.lastMessage}
+            </Text>
             <Text style={styles.time}>{formattedTimeString(item.lastMessageTime)}</Text>
           </TouchableOpacity>
         )}

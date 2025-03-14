@@ -20,8 +20,8 @@ export type ChatDataProps = {
 };
 
 export type Group = {
-  id: number;
-  name: string;
+  groupId: number;
+  groupName: string;
 };
 
 export interface UserInfo {
@@ -50,6 +50,7 @@ export type ChatMessageServer = {
   messageText: string;
   messageType: number;
   senderId: number;
+  attachmentId: null;
 };
 
 export type UserListType = {
