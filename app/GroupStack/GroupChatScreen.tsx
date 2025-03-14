@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Image, Modal } from 'react-native';
-import { useUser } from '@/components/UserContext';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useSignalR } from '@/services/signalRService';
-import { SOCKET_URL } from '@/constants/Strings';
-import { GiftedChat, IMessage } from 'react-native-gifted-chat';
-import { ChatMessageServer, GroupList } from '@/constants/Types';
-import { v4 as uuidv4 } from 'uuid'; // Import uuid for generating unique message IDs
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useUser } from '@/components/UserContext';
+import { SOCKET_URL } from '@/constants/Strings';
+import { ChatMessageServer, Group, Participants } from '@/constants/Types';
+import { getGroupChatHistory, getGroupUsers } from '@/services/api/auth';
+import { useSignalR } from '@/services/signalRService';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { GiftedChat, IMessage } from 'react-native-gifted-chat';
+import { v4 as uuidv4 } from 'uuid'; // Import uuid for generating unique message IDs
 import AddMembersToGroup from './AddMemberToGroup';
 
 type GroupChatScreenProps = {
@@ -16,7 +17,7 @@ type GroupChatScreenProps = {
 
 const GroupChatScreen: React.FC = () => {
   const searchParams = useLocalSearchParams<GroupChatScreenProps>();
-  const selectedGroup: GroupList = searchParams.selectedGroup
+  const selectedGroup: Group = searchParams.selectedGroup
     ? JSON.parse(searchParams.selectedGroup)
     : null;
 
@@ -24,6 +25,7 @@ const GroupChatScreen: React.FC = () => {
   const connection = useSignalR(SOCKET_URL);
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
+  const [groupUserList, setGroupUsersList] = useState<Participants[]>([]);
 
   const handleIncomingMessage = useCallback((chatMes: ChatMessageServer) => {
     setMessages((prevMessages) =>
@@ -48,7 +50,7 @@ const GroupChatScreen: React.FC = () => {
         console.log('AddedToGroup:', groupId, groupName);
       });
 
-      getGroupChatHistory();
+      getGroupConversationHistory();
     }
 
     return () => {
@@ -59,15 +61,19 @@ const GroupChatScreen: React.FC = () => {
     };
   }, [connection]);
 
-  const getGroupChatHistory = async () => {
-    const groupChat = await connection!.invoke('GetGroupChatHistory', selectedGroup.GroupId);
-    const groupMembers = await connection!.invoke('GetGroupMembers', selectedGroup.GroupId);
-    if (groupChat.length) {
-      const formattedMessages = groupChat.map((chat: ChatMessageServer) => ({
-        _id: chat.id || uuidv4(),
+  const getGroupConversationHistory = async () => {
+    const groupUsers: Participants[] = await getGroupUsers(selectedGroup.groupId);
+    setGroupUsersList(groupUsers);
+    const groupChatHistory: ChatMessageServer[] = await getGroupChatHistory(selectedGroup.groupId);
+    if (groupChatHistory.length) {
+      const formattedMessages = groupChatHistory.map((chat: ChatMessageServer) => ({
+        _id: chat.messageId || uuidv4(),
         text: chat.messageText,
         createdAt: new Date(chat.createdOn).getTime(),
-        user: { _id: chat.senderId, name: 'Test' },
+        user: {
+          _id: chat.senderId,
+          name: groupUsers.find((user) => user.userId === chat.senderId)?.userName,
+        },
       }));
       setMessages((prevMessages) => GiftedChat.append(prevMessages, formattedMessages));
     }
@@ -87,7 +93,7 @@ const GroupChatScreen: React.FC = () => {
 
   const sendMessage = async (messageText: string) => {
     try {
-      await connection!.invoke('SendMessageToGroup', selectedGroup.GroupId, messageText);
+      await connection!.invoke('SendMessageToGroup', selectedGroup.groupId, messageText);
       console.log('coming here for sending mesg');
     } catch (error) {
       console.error('Error sending message: ', error);
@@ -140,7 +146,20 @@ const GroupChatScreen: React.FC = () => {
     <View style={styles.container}>
       <Stack.Screen
         options={{
-          title: selectedGroup.GroupName,
+          headerTitle: () => (
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: '/GroupStack/GroupDetailsScreen',
+                  params: {
+                    group: JSON.stringify(selectedGroup),
+                    groupUsers: JSON.stringify(groupUserList),
+                  },
+                })
+              }>
+              <Text style={styles.headerTitle}>{selectedGroup.groupName}</Text>
+            </TouchableOpacity>
+          ),
           headerLargeStyle: { backgroundColor: 'blue' },
           headerLeft: () => (
             <View style={styles.headerLeft}>
