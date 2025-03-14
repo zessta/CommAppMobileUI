@@ -1,42 +1,35 @@
 import { useUser } from '@/components/UserContext';
-import { SOCKET_URL } from '@/constants/Strings';
-import { ChatLastConversationList } from '@/constants/Types';
-import { useSignalR } from '@/services/signalRService';
+import { UserListType } from '@/constants/Types';
+import { getUserList } from '@/services/api/auth';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const ContactScreen = () => {
-  const connection = useSignalR(SOCKET_URL);
-  const [contactsList, setContactsList] = useState<ChatLastConversationList[]>([]);
+  const [contactsList, setContactsList] = useState<UserListType[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const { user } = useUser(); // Access the user from context
 
   useEffect(() => {
-    if (connection) {
-      getContactsList();
-    }
-  }, [connection]);
+    getContactsList();
+  }, []);
 
   const getContactsList = async () => {
-    const chatLastConversations = await connection!.invoke('GetUserConversations');
-    setContactsList(chatLastConversations);
+    const getAllUsers: UserListType[] = await getUserList();
+    console.log('getAllUsers', getAllUsers);
+    setContactsList(getAllUsers);
   };
 
   // Function to filter the contacts based on search query
   const filteredContacts = contactsList?.length
-    ? contactsList.filter((contact) =>
-        contact.participants[0]?.userName.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
+    ? contactsList.filter((contact) => contact.userName.includes(searchQuery.toLowerCase()))
     : [];
 
   // Function to handle navigation on clicking a contact card
-  const handleContactPress = (contactId: ChatLastConversationList) => {
+  const handleContactPress = (contactId: UserListType) => {
     const receiverDataObject = JSON.stringify({
-      id: contactId.participants[0].userId,
-      name: contactId.participants[0].userName,
-      time: contactId.lastMessageTime,
-      lastMessage: contactId.lastMessage,
+      id: contactId.userId,
+      name: contactId.userName,
     });
 
     router.push({
@@ -49,12 +42,12 @@ const ContactScreen = () => {
   };
 
   // Render Item for FlatList
-  const renderContact = ({ item }: { item: ChatLastConversationList }) => (
+  const renderContact = ({ item }: { item: UserListType }) => (
     <TouchableOpacity onPress={() => handleContactPress(item)} style={styles.card}>
       {/* Profile Image */}
       <Image
         source={{
-          uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${item.participants[0].userName}`,
+          uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${item.userName}`,
         }}
         style={styles.profileImage}
       />
@@ -62,10 +55,10 @@ const ContactScreen = () => {
       {/* Name and Last Message */}
       <View style={styles.textContainer}>
         {/* Participant's Username as Header */}
-        <Text style={styles.username}>{item.participants[0].userName}</Text>
+        <Text style={styles.username}>{item.userName}</Text>
 
         {/* Last Message */}
-        <Text style={styles.lastMessage}>{item.lastMessage}</Text>
+        {/* <Text style={styles.lastMessage}>{item.lastMessage}</Text> */}
       </View>
     </TouchableOpacity>
   );
@@ -84,7 +77,7 @@ const ContactScreen = () => {
       <FlatList
         data={filteredContacts}
         renderItem={renderContact}
-        keyExtractor={(item, index) => item.participants[0].userId + index.toString()} // Unique key for each item
+        keyExtractor={(item, index) => item.userId + index.toString()} // Unique key for each item
         contentContainerStyle={styles.scrollView}
         ListEmptyComponent={<Text style={styles.noContactsText}>No contacts found</Text>}
       />

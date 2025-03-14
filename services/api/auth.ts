@@ -18,4 +18,25 @@ export const login = async (email: string, password: string) => {
   }
 };
 
-// You can add more authentication-related API functions (e.g., registration)
+export const getChatHistory = async (receiverId: number) => {
+  try {
+    // Make POST request to login endpoint
+    const response = await client.get(`${ENDPOINTS.chatHistory}/${receiverId}`);
+
+    return handleSuccess(response); // Handle successful response
+  } catch (error) {
+    handleError(error); // Handle error response
+  }
+};
+
+export const getUserList = async () => {
+  try {
+    // Make POST request to login endpoint
+    const response = await client.get(ENDPOINTS.usersList);
+    console.log('getUserList', response.data);
+
+    return handleSuccess(response); // Handle successful response
+  } catch (error) {
+    handleError(error); // Handle error response
+  }
+};

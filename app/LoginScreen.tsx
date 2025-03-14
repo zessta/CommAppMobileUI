@@ -25,6 +25,9 @@ const LoginScreen = () => {
   useEffect(() => {
     const checkToken = async () => {
       const token = await AsyncStorage.getItem('authToken');
+      const userInfo = await AsyncStorage.getItem('userData');
+      setUser(JSON.parse(userInfo!)); // Save user data in context
+
       if (token) {
         // Token exists, automatically navigate to chat list screen
         router.push({ pathname: '/(tabs)/chatListScreen' });

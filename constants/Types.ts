@@ -51,3 +51,29 @@ export type ChatMessageServer = {
   messageType: number;
   senderId: number;
 };
+
+export type UserListType = {
+  badgeId: string;
+  email: string;
+  role: number;
+  userId: number;
+  userName: string;
+};
+
+export type ChatConversationType = {
+  conversationId: number;
+  conversationType: number;
+  groupId: number;
+  lastMessage: string;
+  lastMessageSenderId: number;
+  lastMessageStatus: number;
+  lastMessageSenderName: string;
+  lastMessageTime: string;
+  participants: ParticipantsType[];
+  userId: number;
+};
+
+export type ParticipantsType = {
+  userId: number;
+  userName: string;
+};
