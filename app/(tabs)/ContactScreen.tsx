@@ -1,17 +1,16 @@
 import { useUser } from '@/components/UserContext';
-import { CHAT_TEST_DATA, SOCKET_URL } from '@/constants/Strings';
+import { SOCKET_URL } from '@/constants/Strings';
 import { ChatLastConversationList } from '@/constants/Types';
 import { useSignalR } from '@/services/signalRService';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const ContactScreen = () => {
   const connection = useSignalR(SOCKET_URL);
   const [contactsList, setContactsList] = useState<ChatLastConversationList[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const { user } = useUser(); // Access the user from context
-  console.log('conext user', user);
 
   useEffect(() => {
     if (connection) {
@@ -20,14 +19,16 @@ const ContactScreen = () => {
   }, [connection]);
 
   const getContactsList = async () => {
-    const chatLastConversations = await connection!.invoke('GetUserConversations', user?.id);
+    const chatLastConversations = await connection!.invoke('GetUserConversations');
     setContactsList(chatLastConversations);
   };
 
   // Function to filter the contacts based on search query
-  const filteredContacts = contactsList.filter((contact) =>
-    contact.participants[0].userName.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredContacts = contactsList?.length
+    ? contactsList.filter((contact) =>
+        contact.participants[0]?.userName.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : [];
 
   // Function to handle navigation on clicking a contact card
   const handleContactPress = (contactId: ChatLastConversationList) => {

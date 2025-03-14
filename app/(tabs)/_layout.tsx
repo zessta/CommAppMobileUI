@@ -5,7 +5,6 @@ import { Platform } from 'react-native';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
-import { SocketProvider } from '@/components/SocketContext';
 
 export default function TabLayout() {
   return (
@@ -40,6 +39,13 @@ export default function TabLayout() {
         name="GroupListScreen"
         options={{
           title: 'Groups',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="groups" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="AboutScreen"
+        options={{
+          title: 'About',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="groups" color={color} />,
         }}
       />

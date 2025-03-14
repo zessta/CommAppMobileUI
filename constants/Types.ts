@@ -29,3 +29,25 @@ export interface UserInfo {
   UserId: number;
   ConnectionId: string;
 }
+
+export type GroupList = {
+  CreatedBy: number;
+  CreatedOn: string;
+  DeletedBy: number;
+  DeletedOn: string;
+  EntityState: number;
+  GroupId: number;
+  GroupName: string;
+  UpdatedBy: number;
+  UpdatedOn: string;
+};
+
+export type ChatMessageServer = {
+  conversationId: number;
+  createdOn: string;
+  messageId: string;
+  messageStatus: number;
+  messageText: string;
+  messageType: number;
+  senderId: number;
+};

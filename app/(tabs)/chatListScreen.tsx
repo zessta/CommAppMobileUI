@@ -1,14 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { useUser } from '@/components/UserContext';
+import { SOCKET_URL } from '@/constants/Strings';
+import { ChatLastConversationList, UserInfo } from '@/constants/Types';
+import { useSignalR } from '@/services/signalRService';
+import { formattedTimeString } from '@/Utils/utils';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSocket } from '@/components/SocketContext'; // Assuming context is correctly set up
-import * as SignalR from '@microsoft/signalr';
-import { useSignalR } from '@/services/signalRService';
-import { SOCKET_URL } from '@/constants/Strings';
-import { useUser } from '@/components/UserContext';
-import { ChatLastConversationList, UserInfo } from '@/constants/Types';
-import { formattedTimeString } from '@/Utils/utils';
+import React, { useEffect, useState } from 'react';
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export type ChatDataProps = {
   id: number;
@@ -61,7 +59,6 @@ export interface GroupInfo {
 }
 
 const ChatListScreen = () => {
-  const { userInputName } = useLocalSearchParams<ChatScreenProps>(); // Extract the parameter
   const [searchText, setSearchText] = useState('');
   const [chatUsers, setChatUsers] = useState<ChatLastConversationList[]>([]);
   const connection = useSignalR(SOCKET_URL);
@@ -88,8 +85,9 @@ const ChatListScreen = () => {
       await connection!.invoke('NewUser', user?.name);
 
       const chatUserLists = await connection!.invoke('GetUserList');
+      console.log('chatUserLists', chatUserLists);
       const parsedChatUserLists = JSON.parse(chatUserLists);
-      const chatLastConversations = await connection!.invoke('GetUserConversations', user?.id);
+      const chatLastConversations = await connection!.invoke('GetUserConversations');
       console.log('chatLastConversations', chatLastConversations);
       setChatUsers(chatLastConversations);
     } catch (error) {

@@ -1,95 +1,100 @@
 import { useUser } from '@/components/UserContext';
-import { CHAT_TEST_DATA, USER_CONTEXT } from '@/constants/Strings';
+import { CHAT_TEST_DATA } from '@/constants/Strings';
+import { login } from '@/services/api/auth'; // Import login function from API
+import { extractUsername } from '@/Utils/utils';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Button,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  StyleSheet,
 } from 'react-native';
-import { OtpInput } from 'react-native-otp-entry';
+
 const LoginScreen = () => {
   const router = useRouter();
-  const [input, setInput] = useState<string>('');
-  const [showOTP, setShowOTP] = useState<boolean>(false);
+  const [input, setInput] = useState<string>(''); // For email/phone input
+  const [password, setPassword] = useState<string>(''); // For password input
   const [loading, setLoading] = useState<boolean>(false);
-  const [filledOTP, setFilledOTP] = useState<number>(111111);
   const { setUser } = useUser(); // Get the setter function from context
 
-  const handleLogin = () => {
+  // Check if the token already exists on component mount
+  useEffect(() => {
+    const checkToken = async () => {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        // Token exists, automatically navigate to chat list screen
+        router.push({ pathname: '/(tabs)/chatListScreen' });
+      }
+    };
+
+    checkToken();
+  }, [router]); // Empty dependency array means it runs once on mount
+
+  const handleLogin = async () => {
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      // Call the login function from the API service
+      const userData = await login(input, password);
+      const userNameFromMail = extractUsername(input);
+      // If login is successful
+      if (userData) {
+        const getTestInfo = CHAT_TEST_DATA.find(
+          (chat) => chat.name.toLowerCase() === userNameFromMail,
+        );
+        await AsyncStorage.setItem('userData', JSON.stringify(getTestInfo));
+
+        console.log('getTestInfo', getTestInfo);
+        setUser(getTestInfo!); // Save user data in context
+        await AsyncStorage.setItem('authToken', userData.token); // Save token to AsyncStorage
+
+        // Redirect to chat list screen
+        router.push({ pathname: '/(tabs)/chatListScreen', params: { userInputName: input } });
+      }
+    } catch (error) {
+      console.error('Login failed', error);
+    } finally {
       setLoading(false);
-      setShowOTP(true);
-    }, 2000);
+    }
   };
 
-  const onClickedVerifyOTP = () => {
-    setLoading(true);
-    const findLoginData = CHAT_TEST_DATA.find((data) => data.name === input);
-    setTimeout(() => {
-      setLoading(false);
-      setUser(findLoginData || USER_CONTEXT);
-      router.push({ pathname: '/(tabs)/chatListScreen', params: { userInputName: input } });
-    }, 2000);
+  const removeItems = async () => {
+    await AsyncStorage.removeItem('authToken');
   };
+
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        {!showOTP ? (
-          <View style={styles.form}>
-            <Text style={styles.title}>Enter Email or Mobile Number</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Email or Mobile"
-              placeholderTextColor="#000"
-              value={input}
-              onChangeText={setInput}
-            />
-            <TouchableOpacity onPress={handleLogin} style={styles.button}>
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Next</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.title}>Enter OTP</Text>
-            <OtpInput
-              numberOfDigits={6}
-              onTextChange={(otp) => setFilledOTP(Number(otp))}
-              type="numeric"
-              onFilled={(otp) => setFilledOTP(Number(otp))}
-            />
-            <View style={styles.otpButtonsContainer}>
-              <TouchableOpacity onPress={() => setShowOTP(false)} style={styles.button}>
-                <Text style={styles.buttonText}>Go Back</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                disabled={filledOTP ? filledOTP.toString().length < 6 : true}
-                onPress={onClickedVerifyOTP}
-                style={[
-                  styles.button,
-                  {
-                    backgroundColor:
-                      filledOTP && filledOTP.toString().length === 6 ? '#007AFF' : 'grey',
-                  },
-                ]}>
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Verify OTP</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+        <View style={styles.form}>
+          <Text style={styles.title}>Enter Email or Mobile Number</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Email or Mobile"
+            placeholderTextColor="#000"
+            value={input}
+            onChangeText={setInput}
+          />
+          <Text style={styles.title}>Enter Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#000"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TouchableOpacity onPress={handleLogin} style={styles.button}>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Login</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -136,11 +141,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
-  },
-  otpButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    marginTop: 30,
   },
 });
 

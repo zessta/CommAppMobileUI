@@ -15,6 +15,8 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'arrow-back': 'arrow-back',
   groups: 'groups',
+  adduser: 'group-add',
+  poll: 'poll',
 } as Partial<
   Record<
     import('expo-symbols').SymbolViewProps['name'],
