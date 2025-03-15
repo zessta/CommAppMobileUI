@@ -1,6 +1,7 @@
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatLastConversationList, Group, UserInfo } from '@/constants/Types';
+import { Group, Participants, UserListType } from '@/constants/Types';
+import { getUserList } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import Checkbox from 'expo-checkbox';
 import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
@@ -17,15 +18,17 @@ import {
 const AddMembersToGroup = ({
   setIsDialogVisible,
   selectedGroup,
+  groupUserList,
 }: {
   setIsDialogVisible: Dispatch<SetStateAction<boolean>>;
   selectedGroup: Group;
+  groupUserList: Participants[];
 }) => {
+  console.log('coming insde addmemeber');
   const { user } = useUser(); // Access the user from context
   const connection = useSignalR(SOCKET_URL);
-  const [onlineUsers, setOnlineUsers] = useState<UserInfo[]>([]);
-  const [contactsList, setContactsList] = useState<ChatLastConversationList[]>([]);
-  const [selectedContact, setSelectedContact] = useState<string | null>(null); // Track the selected contact ID
+  const [contactsList, setContactsList] = useState<UserListType[]>([]);
+  const [selectedContact, setSelectedContact] = useState<number | null>(null); // Track the selected contact ID
 
   useEffect(() => {
     if (connection) {
@@ -40,15 +43,19 @@ const AddMembersToGroup = ({
   }, [connection]);
 
   const getContactsList = async () => {
-    const chatUserLists = await connection!.invoke('GetUserList');
-    setOnlineUsers(JSON.parse(chatUserLists));
-    const chatLastConversations = await connection!.invoke('GetUserConversations');
-    setContactsList(chatLastConversations);
-    const groupMembers = await connection!.invoke('GetGroupMembers', selectedGroup.groupId);
-    console.log('groupMembers', groupMembers);
+    const getAllUsers: UserListType[] = await getUserList();
+    console.log('getAllUsers', getAllUsers);
+    if (getAllUsers.length) {
+      console.log('groupUsers', groupUserList);
+      const filteredUsers = getAllUsers.filter(
+        (contact) => !groupUserList.some((groupUser) => groupUser.userId === contact.userId),
+      );
+      console.log('filterOutUser', filteredUsers);
+      setContactsList(filteredUsers);
+    }
   };
 
-  const toggleContactSelection = (contactId: string) => {
+  const toggleContactSelection = (contactId: number) => {
     if (selectedContact === contactId) {
       // If the same contact is clicked again, unselect it
       setSelectedContact(null);
@@ -63,26 +70,13 @@ const AddMembersToGroup = ({
       alert('Please select a member for the group');
       return;
     }
-    console.log('selectedContact', selectedContact);
-
-    // Find the selected user's connection ID from the online users
-    const selectedConnectionId = onlineUsers?.find(
-      (user) => user.UserId === Number(selectedContact),
-    )?.ConnectionId;
-
-    if (!selectedConnectionId) {
-      alert('Selected user is not online');
-      return;
-    }
-    console.log('selectedConnectionId', selectedConnectionId);
-
     // Now invoke the 'AddMemberToGroup' method with the group name and selected connection IDs
-    await connection!.invoke('AddMemberToGroup', selectedGroup.groupId, Number(selectedContact));
+    await connection!.invoke('AddMemberToGroup', selectedGroup.groupId, selectedContact);
 
     alert('Member added successfully');
     setIsDialogVisible(false); // Close the modal after adding the member
   };
-
+  console.log('contactsList', contactsList);
   return (
     <Modal
       visible={true}
@@ -98,24 +92,16 @@ const AddMembersToGroup = ({
           <FlatList
             data={contactsList}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.contactCard,
-                  selectedContact === item.participants?.[0]?.userId.toString() &&
-                    styles.selectedContact,
-                ]}
-                onPress={() => toggleContactSelection(item.participants?.[0]?.userId.toString())}>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: '10px' }}>
                 <Checkbox
-                  value={selectedContact === item.participants?.[0]?.userId.toString()}
-                  onValueChange={() =>
-                    toggleContactSelection(item.participants?.[0]?.userId.toString())
-                  }
+                  value={selectedContact === item.userId}
+                  onValueChange={() => toggleContactSelection(item.userId)}
                   style={styles.checkbox}
                 />
-                <Text style={styles.contactName}>{item.participants?.[0]?.userName}</Text>
-              </TouchableOpacity>
+                <Text style={styles.contactName}>{item.userName}</Text>
+              </View>
             )}
-            keyExtractor={(item) => item.participants?.[0]?.userId.toString()}
+            keyExtractor={(item) => item.userId.toString()}
             contentContainerStyle={styles.contactListContainer}
           />
 
