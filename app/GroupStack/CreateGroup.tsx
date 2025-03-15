@@ -1,6 +1,7 @@
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatLastConversationList, UserInfo } from '@/constants/Types';
+import { UserListType } from '@/constants/Types';
+import { getUserList } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import Checkbox from 'expo-checkbox';
 import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
@@ -23,24 +24,20 @@ const CreateGroup = ({
   const { user } = useUser(); // Access the user from context
   const connection = useSignalR(SOCKET_URL);
   const [groupName, setGroupName] = useState<string>('');
-  const [contactsList, setContactsList] = useState<ChatLastConversationList[]>([]);
-  const [selectedContacts, setSelectedContacts] = useState<string[]>([]); // To track selected contacts
-  const [onlineUsers, setOnlineUsers] = useState<UserInfo[]>([]);
+  const [contactsList, setContactsList] = useState<UserListType[]>([]);
+  const [selectedContacts, setSelectedContacts] = useState<number[]>([]); // To track selected contacts
 
   useEffect(() => {
-    if (connection) {
-      getContactsList();
-    }
-  }, [connection]);
+    getContactsList();
+  }, []);
 
   const getContactsList = async () => {
-    const chatUserLists = await connection!.invoke('GetUserList');
-    setOnlineUsers(JSON.parse(chatUserLists));
-    const chatLastConversations = await connection!.invoke('GetUserConversations');
-    setContactsList(chatLastConversations);
+    const getAllUsers: UserListType[] = await getUserList();
+    const filterOutUser = getAllUsers.filter((contacts) => contacts.userId !== user?.id);
+    setContactsList(filterOutUser);
   };
 
-  const toggleContactSelection = (contactId: string) => {
+  const toggleContactSelection = (contactId: number) => {
     setSelectedContacts((prevSelectedContacts) => {
       if (prevSelectedContacts.includes(contactId)) {
         return prevSelectedContacts.filter((id) => id !== contactId); // Deselect contact
@@ -60,21 +57,11 @@ const CreateGroup = ({
       alert('Please select at least one member for the group');
       return;
     }
-    // Find the selected users' connection IDs from the online users
-    const findSelectedUserIds = selectedContacts
-      .map((id) => {
-        const user = onlineUsers?.find((user) => user.UserId === Number(id));
-        return user ? user.UserId : null; // Returns the connection ID or null if not found
-      })
-      .filter((userId) => userId !== null); // Remove null values if no connection ID is found
-    findSelectedUserIds.push(user?.id!);
-    if (findSelectedUserIds.length === 0) {
-      alert('No selected users are online');
-      return;
-    }
+
+    selectedContacts.push(user?.id!);
 
     // Now invoke the 'CreateGroup' method with the group name and selected connection IDs
-    await connection!.invoke('CreateGroup', groupName, findSelectedUserIds);
+    await connection!.invoke('CreateGroup', groupName, selectedContacts);
 
     alert('Group created successfully');
     setIsDialogVisible(false); // Close the modal after creation
@@ -105,16 +92,14 @@ const CreateGroup = ({
             renderItem={({ item }) => (
               <View style={styles.contactCard}>
                 <Checkbox
-                  value={selectedContacts.includes(item.participants?.[0]?.userId.toString())}
-                  onValueChange={() =>
-                    toggleContactSelection(item.participants?.[0]?.userId.toString())
-                  }
+                  value={selectedContacts.includes(item.userId)}
+                  onValueChange={() => toggleContactSelection(item.userId)}
                   style={styles.checkbox}
                 />
-                <Text style={styles.contactName}>{item.participants?.[0]?.userName}</Text>
+                <Text style={styles.contactName}>{item.userName}</Text>
               </View>
             )}
-            keyExtractor={(item) => item.participants?.[0]?.userId.toString()}
+            keyExtractor={(item) => item.userId.toString()}
           />
 
           {/* Buttons */}

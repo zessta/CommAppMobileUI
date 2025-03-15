@@ -142,21 +142,24 @@ const GroupChatScreen: React.FC = () => {
     console.log('Add Member clicked');
   };
 
+  const onPressGroupTitle = () => {
+    router.push({
+      pathname: '/GroupStack/GroupDetailsScreen',
+      params: {
+        group: JSON.stringify(selectedGroup),
+        groupUsers: JSON.stringify(groupUserList),
+      },
+    });
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen
         options={{
           headerTitle: () => (
             <TouchableOpacity
-              onPress={() =>
-                router.push({
-                  pathname: '/GroupStack/GroupDetailsScreen',
-                  params: {
-                    group: JSON.stringify(selectedGroup),
-                    groupUsers: JSON.stringify(groupUserList),
-                  },
-                })
-              }>
+              onPress={() => onPressGroupTitle()}
+              style={styles.headerTitleContainer}>
               <Text style={styles.headerTitle}>{selectedGroup.groupName}</Text>
             </TouchableOpacity>
           ),
@@ -168,7 +171,7 @@ const GroupChatScreen: React.FC = () => {
               </TouchableOpacity>
               <Image
                 source={{
-                  uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=Test`,
+                  uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${selectedGroup?.groupName || 'Default'}`,
                 }}
                 style={styles.avatar}
               />
@@ -191,6 +194,7 @@ const GroupChatScreen: React.FC = () => {
         <GiftedChat
           messages={messages}
           onSend={(messages) => onSend(messages)}
+          renderUsernameOnMessage={true}
           user={{
             _id: Number(user?.id),
             name: user?.name,
@@ -200,7 +204,11 @@ const GroupChatScreen: React.FC = () => {
           inverted
         />
       ) : (
-        <AddMembersToGroup setIsDialogVisible={setIsDialogVisible} selectedGroup={selectedGroup} />
+        <AddMembersToGroup
+          setIsDialogVisible={setIsDialogVisible}
+          selectedGroup={selectedGroup}
+          groupUserList={groupUserList}
+        />
       )}
     </View>
   );
@@ -224,7 +232,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: 10,
-    flex: 1,
   },
   headerButton: {
     marginRight: 10,
@@ -233,26 +240,27 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    marginRight: 10,
   },
   headerRight: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    width: '50%',
   },
   addButton: {
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 10,
   },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingRight: 40, // Space for right buttons
+  },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontWeight: 'bold',
     fontSize: 18,
+    fontWeight: 'bold',
     color: 'black',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
   },
 });
 
