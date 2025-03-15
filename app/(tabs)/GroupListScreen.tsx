@@ -7,6 +7,7 @@ import { useSignalR } from '@/services/signalRService';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import SendTag from '../GroupStack/SendTag';
 
 const GroupListScreen = () => {
   const { user } = useUser(); // Access user from context
@@ -14,6 +15,7 @@ const GroupListScreen = () => {
   const [groupsList, setGroupsList] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
+  const [isTagDialogVisible, setIsTagDialogVisible] = useState<boolean>(false);
 
   useEffect(() => {
     getGroupList();
@@ -56,6 +58,9 @@ const GroupListScreen = () => {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
+        <TouchableOpacity onPress={() => setIsTagDialogVisible(true)} style={styles.createButton}>
+        <Text style={styles.createButtonText}>Tags</Text>
+        </TouchableOpacity>
         {/* Create Group Button */}
         <TouchableOpacity onPress={handleCreateGroup} style={styles.createButton}>
           <Text style={styles.createButtonText}>Create Group</Text>
@@ -74,6 +79,7 @@ const GroupListScreen = () => {
       ) : null}
 
       {isDialogVisible ? <CreateGroup setIsDialogVisible={setIsDialogVisible} /> : null}
+      {isTagDialogVisible ? <SendTag setIsTagDialogVisible={setIsTagDialogVisible} /> : null}
     </View>
   );
 };
