@@ -284,7 +284,7 @@ const GroupChatScreen: React.FC = () => {
           headerTitleStyle: styles.headerTitle,
         }}
       />
-      {!isDialogVisible ? (
+      {!isDialogVisible && !isTagDialogVisible ? (
         <GiftedChat
           messages={messages}
           onSend={(messages) => onSend(messages)}
@@ -298,14 +298,18 @@ const GroupChatScreen: React.FC = () => {
           renderFooter={renderFooter}
           inverted
         />
-      ) : (
+      ) : isDialogVisible ? (
         <AddMembersToGroup
           setIsDialogVisible={setIsDialogVisible}
           selectedGroup={selectedGroup}
           groupUserList={groupUserList}
         />
-      )}
-      {isTagDialogVisible ? <SendTag setIsTagDialogVisible={setIsTagDialogVisible} onSendTagMessage={onSendTagMessage} /> : null}
+      ) : isTagDialogVisible ? (
+        <SendTag
+          setIsTagDialogVisible={setIsTagDialogVisible}
+          onSendTagMessage={onSendTagMessage}
+        />
+      ) : null}
     </View>
   );
 };
