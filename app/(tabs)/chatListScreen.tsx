@@ -68,10 +68,18 @@ const ChatListScreen = () => {
 
   // Join chat when the connection is available
   useEffect(() => {
+    joinChat();
+  }, []);
+
+  useEffect(() => {
     if (connection) {
-      joinChat();
+      newUserConnection();
     }
   }, [connection]);
+
+  const newUserConnection = async () => {
+    await connection!.invoke('NewUser', user?.name);
+  };
 
   // Filter chat data based on the search text
   const filteredChats = userChatHistory?.filter(
@@ -83,7 +91,6 @@ const ChatListScreen = () => {
   // Function to join chat and fetch groups
   const joinChat = async () => {
     try {
-      await connection!.invoke('NewUser', user?.name);
       const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.id!);
       const filterOutGroups = usersLastChatHistory.filter((chat) => chat.groupId === null);
       setUserChatHistory(filterOutGroups);

@@ -1,6 +1,6 @@
 import { useUser } from '@/components/UserContext';
-import { UserListType } from '@/constants/Types';
-import { getUserList } from '@/services/api/auth';
+import { ChatConversationType, UserListType } from '@/constants/Types';
+import { getLastChatHistory, getUserList } from '@/services/api/auth';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -8,16 +8,23 @@ import { FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } 
 const ContactScreen = () => {
   const [contactsList, setContactsList] = useState<UserListType[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [userLastMessageList, setUserLastMessageList] = useState<ChatConversationType[]>([]);
   const { user } = useUser(); // Access the user from context
 
   useEffect(() => {
     getContactsList();
+    userLastChatMessage();
   }, []);
 
   const getContactsList = async () => {
     const getAllUsers: UserListType[] = await getUserList();
-    console.log('getAllUsers', getAllUsers);
-    setContactsList(getAllUsers);
+    const filteredUsers = getAllUsers.filter((users) => users.userId !== user?.id);
+    setContactsList(filteredUsers);
+  };
+
+  const userLastChatMessage = async () => {
+    const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.id!);
+    setUserLastMessageList(usersLastChatHistory);
   };
 
   // Function to filter the contacts based on search query
@@ -31,12 +38,15 @@ const ContactScreen = () => {
       id: contactId.userId,
       name: contactId.userName,
     });
-
+    const conversationChatData = userLastMessageList
+      .filter((chat) => chat.groupId === null)
+      .find((userChat) => userChat.participants?.find((parc) => parc.userId === contactId.userId));
     router.push({
       pathname: '/ChatStack/chatScreen',
       params: {
         receiverData: receiverDataObject,
         senderData: JSON.stringify(user),
+        conversationId: conversationChatData?.conversationId,
       },
     });
   };
