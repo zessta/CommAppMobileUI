@@ -5,22 +5,24 @@ import { useSignalR } from '@/services/signalRService';
 import * as signalR from '@microsoft/signalr';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GiftedChat, IMessage } from 'react-native-gifted-chat';
 import { ChatDataProps } from '../(tabs)/chatListScreen';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 
-type ChatScreenProps = {
+export type ChatScreenProps = {
   receiverData: string;
   senderData: string;
-  conversationId: string;
+  conversationId?: string;
 };
 
 const ChatScreen: React.FC = () => {
   const searchParams = useLocalSearchParams<ChatScreenProps>();
   const receiverData: ChatDataProps = JSON.parse(searchParams.receiverData);
   const senderData: ChatDataProps = JSON.parse(searchParams.senderData);
-  const conversationId: number = Number(JSON.parse(searchParams.conversationId));
+  const conversationId: number | undefined = searchParams?.conversationId
+    ? Number(JSON.parse(searchParams?.conversationId!))
+    : undefined;
   const [messages, setMessages] = useState<IMessage[]>([]);
   const connection = useSignalR(SOCKET_URL);
 
@@ -43,12 +45,14 @@ const ChatScreen: React.FC = () => {
 
   const setupConnection = useCallback(async () => {
     if (!connection) return;
-    const userChatHistoryData: ChatMessageServer[] = await getUsersChatHistory(conversationId);
+    if (conversationId) {
+      const userChatHistoryData: ChatMessageServer[] = await getUsersChatHistory(conversationId);
 
-    if (userChatHistoryData.length) {
-      userChatHistoryData.reverse().forEach((chat: ChatMessageServer, index: number) => {
-        handleIncomingMessage(chat, index, Number(senderData.id), Number(receiverData.id));
-      });
+      if (userChatHistoryData.length) {
+        userChatHistoryData.reverse().forEach((chat: ChatMessageServer, index: number) => {
+          handleIncomingMessage(chat, index, Number(senderData.id), Number(receiverData.id));
+        });
+      }
     }
 
     // Listen for incoming messages
@@ -115,6 +119,17 @@ const ChatScreen: React.FC = () => {
     }
   }, [connection, setupConnection, handleReceivedMessage]);
 
+  const renderFooter = () => {
+    if (messages.length === 0) {
+      return (
+        <View style={styles.placeholderContainer}>
+          <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
+        </View>
+      );
+    }
+    return null;
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen
@@ -158,6 +173,7 @@ const ChatScreen: React.FC = () => {
           name: senderData?.name,
           avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData?.name}`,
         }}
+        renderFooter={renderFooter}
       />
     </View>
   );
@@ -167,6 +183,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  placeholderContainer: {
+    padding: 10,
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontSize: 16,
+    color: '#aaa',
+    fontStyle: 'italic',
   },
 });
 
