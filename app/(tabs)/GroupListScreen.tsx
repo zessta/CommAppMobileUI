@@ -17,7 +17,7 @@ const GroupListScreen = () => {
 
   useEffect(() => {
     getGroupList();
-  }, []);
+  }, [isDialogVisible]);
 
   const getGroupList = async () => {
     const groupsListData: Group[] = await getGroupsListByUserId(user?.id!);
