@@ -78,3 +78,9 @@ export type ParticipantsType = {
   userId: number;
   userName: string;
 };
+
+export type ChatScreenProps = {
+  receiverData: string;
+  senderData: string;
+  conversationId?: string;
+};

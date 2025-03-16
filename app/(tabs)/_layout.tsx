@@ -32,7 +32,7 @@ export default function TabLayout() {
         name="ContactScreen"
         options={{
           title: 'Contacts',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="contacts" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -46,7 +46,7 @@ export default function TabLayout() {
         name="AboutScreen"
         options={{
           title: 'About',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="groups" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person" color={color} />,
         }}
       />
     </Tabs>

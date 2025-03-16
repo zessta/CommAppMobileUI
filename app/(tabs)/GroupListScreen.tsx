@@ -90,15 +90,13 @@ const GroupListScreen = () => {
       </View>
 
       {/* FlatList to show filtered groups */}
-      {filteredGroupsList?.length ? (
-        <FlatList
-          data={filteredGroupsList}
-          renderItem={renderGroup}
-          keyExtractor={(item) => item?.groupName?.toString() || Math.random().toString()}
-          contentContainerStyle={styles.scrollView}
-          ListEmptyComponent={<Text style={styles.noGroupsText}>No groups found</Text>}
-        />
-      ) : null}
+      <FlatList
+        data={filteredGroupsList}
+        renderItem={renderGroup}
+        keyExtractor={(item) => item?.groupName?.toString() || Math.random().toString()}
+        contentContainerStyle={styles.scrollView}
+        ListEmptyComponent={<Text style={styles.noGroupsText}>No groups found</Text>}
+      />
 
       {isDialogVisible ? <CreateGroup setIsDialogVisible={setIsDialogVisible} /> : null}
     </View>
