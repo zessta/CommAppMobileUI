@@ -7,13 +7,32 @@ import { useSignalR } from '@/services/signalRService';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { GiftedChat, IMessage } from 'react-native-gifted-chat';
+import { Bubble, GiftedChat, IMessage, MessageProps } from 'react-native-gifted-chat';
 import { v4 as uuidv4 } from 'uuid'; // Import uuid for generating unique message IDs
 import AddMembersToGroup from './AddMemberToGroup';
+import SendTag from './SendTag';
 
 type GroupChatScreenProps = {
   selectedGroup: string;
 };
+
+export interface ICustomMessage extends IMessage {
+  pollOptions?: {
+    id: number;
+    option: string;
+    votes: number;
+  }[] | null | undefined;
+}
+
+export interface ITag {
+  description: string;
+  eventTagId: number;
+  name: string;
+  statuses: {
+    eventTagStatusId: number;
+    statusName: string;
+  }[];
+}
 
 const GroupChatScreen: React.FC = () => {
   const searchParams = useLocalSearchParams<GroupChatScreenProps>();
@@ -23,9 +42,10 @@ const GroupChatScreen: React.FC = () => {
 
   const { user } = useUser(); // Access the user from context
   const connection = useSignalR(SOCKET_URL);
-  const [messages, setMessages] = useState<IMessage[]>([]);
+  const [messages, setMessages] = useState<ICustomMessage[]>([]);
   const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
   const [groupUserList, setGroupUsersList] = useState<Participants[]>([]);
+  const [isTagDialogVisible, setIsTagDialogVisible] = useState<boolean>(false);
 
   const handleIncomingMessage = useCallback((chatMes: ChatMessageServer) => {
     setMessages((prevMessages) =>
@@ -79,8 +99,40 @@ const GroupChatScreen: React.FC = () => {
     }
   };
 
+  const onSendTagMessage = (tag?: ITag, message?: string) => {
+    if(!tag) {
+      alert('Please select a Tag');
+      return;
+    }
+    if(!message || message?.trim() === '') {
+      alert('Please enter a message');
+      return;
+    }
+    //setting options for selecting poll
+    const pollOptions = tag.statuses.map((status) => {
+      const poll = {
+        id: status.eventTagStatusId,
+        option: status.statusName,
+        votes: 0,
+      }
+      return poll;
+    })
+    const tagMessage: ICustomMessage = {
+      _id: uuidv4(),
+      text: message,
+      createdAt: new Date().getTime(), 
+      pollOptions: pollOptions,
+      user: {
+        _id: 105,
+        // name: groupUsers.find((user) => user.userId === 105)?.userName,
+      },
+    }
+    setMessages((prevMessages) => GiftedChat.append(prevMessages, [tagMessage]));
+    setIsTagDialogVisible(false);
+  }
+
   const onSend = useCallback(
-    (newMessages: IMessage[] = []) => {
+    (newMessages: ICustomMessage[] = []) => {
       if (newMessages.length > 0) {
         const message = newMessages[0];
         if (connection && connection.state === 'Connected') {
@@ -152,6 +204,48 @@ const GroupChatScreen: React.FC = () => {
     });
   };
 
+  const handleSendTag = () => setIsTagDialogVisible(true);
+
+  const handleVote = (messageId: number, optionId: number) => {
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) => {
+        if (msg._id === messageId && msg.pollOptions) {
+          return {
+            ...msg,
+            pollOptions: msg.pollOptions.map((opt) =>
+              opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
+            ),
+          };
+        }
+        return msg;
+      })
+    );
+  };
+
+  // Custom render for poll messages
+  const renderCustomMessage = (props) => {
+    const { currentMessage } = props;
+    if (currentMessage.pollOptions) {
+      return (
+        <View style={styles.pollContainer}>
+          <Text style={styles.pollQuestion}>{currentMessage.text}</Text>
+          {currentMessage.pollOptions.map((option : any) => (
+            <TouchableOpacity
+              key={option.id}
+              style={styles.pollOption}
+              onPress={() => handleVote(currentMessage._id, option.id)}
+            >
+              <Text style={styles.optionText}>
+                {option.option} - ({option.votes})
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    }
+    return <Bubble {...props} />;
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen
@@ -179,7 +273,7 @@ const GroupChatScreen: React.FC = () => {
           ),
           headerRight: () => (
             <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.addButton} onPress={handleAddMember}>
+              <TouchableOpacity style={styles.addButton} onPress={handleSendTag}>
                 <IconSymbol size={28} name="poll" color={'black'} />
               </TouchableOpacity>
               <TouchableOpacity style={styles.addButton} onPress={handleAddMember}>
@@ -200,6 +294,7 @@ const GroupChatScreen: React.FC = () => {
             name: user?.name,
             avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${user?.name}`,
           }}
+          renderMessage={renderCustomMessage}
           renderFooter={renderFooter}
           inverted
         />
@@ -210,6 +305,7 @@ const GroupChatScreen: React.FC = () => {
           groupUserList={groupUserList}
         />
       )}
+      {isTagDialogVisible ? <SendTag setIsTagDialogVisible={setIsTagDialogVisible} onSendTagMessage={onSendTagMessage} /> : null}
     </View>
   );
 };
@@ -262,6 +358,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'black',
   },
+  pollContainer: {
+    backgroundColor: "#f1f1f1",
+    padding: 10,
+    borderRadius: 8,
+    marginVertical: 5,
+  },
+  pollQuestion: {
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  pollOption: {
+    backgroundColor: 'white',
+    color: 'black',
+    padding: 8,
+    marginVertical: 3,
+    borderRadius: 5,
+  },
+  optionText: {
+    color: "black",
+    textAlign: "center",
+  },
+
 });
 
 export default GroupChatScreen;

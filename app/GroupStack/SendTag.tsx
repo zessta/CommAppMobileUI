@@ -1,8 +1,6 @@
 import client from '@/services/api/client';
-import axios from 'axios';
 import React, { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
 import {
-    FlatList,
     Modal,
     SafeAreaView,
     StyleSheet,
@@ -11,16 +9,22 @@ import {
     TouchableOpacity,
     View,
   } from 'react-native';
-//   import { AutocompleteDropdown, AutocompleteDropdownItem, IAutocompleteDropdownRef } from 'react-native-autocomplete-dropdown';
   import {} from 'react-native-reanimated';
   import SearchableDropdown, {} from 'react-native-searchable-dropdown';
+import { ITag } from './GroupChatScreen';
 
-const SendTag = ({ setIsTagDialogVisible }: { setIsTagDialogVisible: Dispatch<SetStateAction<boolean>> }) => {
-    const [tags, setTags] = useState([]);
-    const [tagOptions, setTagOptions] = useState<any[]>([]);
-    // const dropdownController = useRef<IAutocompleteDropdownRef | null>(null)
+  export interface IDropdownOptions {
+    id: number;
+    name: string;
+  };
 
-    console.log('inside send tag');
+const SendTag = ({ setIsTagDialogVisible, onSendTagMessage }: { setIsTagDialogVisible: Dispatch<SetStateAction<boolean>>, onSendTagMessage: (tag?: ITag, message?: string) => void }) => {
+    const [tags, setTags] = useState<ITag[]>([]);
+    const [tagOptions, setTagOptions] = useState<IDropdownOptions[]>([]);
+    const [filteredTagOptions, setFilteredTagOptions] = useState<IDropdownOptions[]>([]);
+    const [selectedTag, setSelectedTag] = useState<IDropdownOptions>();
+    const [tagMessage, setTagMessage] = useState<string | undefined>();
+    const [searchText, setSearchText] = useState<string | undefined>();
 
     useEffect(() => {
         getAllTags();
@@ -36,40 +40,78 @@ const SendTag = ({ setIsTagDialogVisible }: { setIsTagDialogVisible: Dispatch<Se
             };
         });
         setTagOptions(options);
-
-        console.log('checking ----tags ', getAllTags.data);
+        setFilteredTagOptions(options);
     };
 
+    const onTextChangeTag = (text: string) =>  {
+        setSelectedTag(undefined);
+        setSearchText(text);
+        if(!text) {
+            setFilteredTagOptions(tagOptions);
+        }
+        const filteredOptions = tagOptions.filter((option: IDropdownOptions) => option.name.startsWith(text));
+        setFilteredTagOptions(filteredOptions);
+    }
+
+    const onTagSelected = (item: any) => {
+        setSelectedTag(item);
+        setSearchText(item.name)
+    };
+
+    const onSend = () => {
+        const tag = tags.find((tag: any) => tag.eventTagId === selectedTag?.id);
+        onSendTagMessage(tag, tagMessage);
+    }
+
     return (
-        <Modal
-            visible={true} // Ensure the modal is always visible when calling CreateGroup
-            animationType="slide"
-            transparent
-            onRequestClose={() => setIsTagDialogVisible(false)}
-        >
-            <SafeAreaView style={styles.modalContainer}>
-                <View style={styles.dialogContainer}>
-                    <Text style={styles.dialogTitle}>Send Tag</Text>
-                    {/* <AutocompleteDropdown
-                        dataSet={tagOptions}
-                        controller={controller => dropdownController.current = controller}
-                    >
-                    </AutocompleteDropdown> */}
-                    <SearchableDropdown 
-                    containerStyle={styles.dropdownContainer}
-                    items={tagOptions}
-                    textInputStyle={styles.inputStyle}
-                    itemStyle={styles.itemStyle}
-                    itemTextStyle={styles.itemTextStyle}
-                    // listProps={{ keyboardShouldPersistTaps: "handled" }} // Ensures taps work smoothly
-                    placeholder="Search..."
-                    // modal={true} // Enables overlay behavior
-                    >
-                    </SearchableDropdown>
-                    <Text style={styles.dialogTitle}>End</Text>
-                </View>
-            </SafeAreaView>
-        </Modal>
+      <Modal
+        visible={true} // Ensure the modal is always visible when calling CreateGroup
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsTagDialogVisible(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.dialogContainer}>
+            <Text style={styles.dialogTitle}>Send Tag</Text>
+            <View style={styles.dropdownWrapper}>
+              <SearchableDropdown
+                containerStyle={styles.dropdownContainer}
+                items={filteredTagOptions}
+                textInputStyle={styles.inputStyle}
+                itemStyle={styles.itemStyle}
+                itemTextStyle={styles.itemTextStyle}
+                onTextChange={onTextChangeTag}
+                onItemSelect={onTagSelected}
+                placeholder="Search By Tag"
+                textInputProps={{
+                  value: searchText,
+                }}
+              >
+              </SearchableDropdown>
+            </View>
+
+            <Text style={styles.label}>Message</Text>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Type your message here..."
+              multiline={true}
+              numberOfLines={4}
+              textAlignVertical="top"
+              value={tagMessage}
+              onChangeText={(text) => setTagMessage(text)}
+            />
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity style={styles.addButton} onPress={onSend}>
+                <Text style={styles.buttonText}>Save</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setIsTagDialogVisible(false)}>
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+        </SafeAreaView>
+      </Modal>
     )
 };
 
@@ -78,7 +120,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent overlay
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     dialogContainer: {
         width: '80%',
@@ -95,8 +137,13 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         textAlign: 'left',
     },
+    dropdownWrapper: {
+        width: '100%',
+        marginBottom: 60,
+    },
     dropdownContainer: {
         width: "100%",
+        position: 'absolute',
         zIndex: 999,
       },
       inputStyle: {
@@ -110,11 +157,51 @@ const styles = StyleSheet.create({
       itemStyle: {
         padding: 10,
         backgroundColor: "#fff",
-        borderBottomWidth: 1,
-        borderBottomColor: "#ddd",
+        borderWidth: 1,
+        borderColor: "#ddd",
       },
       itemTextStyle: {
         color: "#000",
+      },
+      label: {
+        color: "#555",
+        fontSize: 16,
+        fontWeight: 600,
+        marginBottom: 10,
+      },
+      textArea: {
+        width: '100%',
+        color: "#000",
+        borderColor: "#ccc",
+        borderWidth: 1,
+        paddingTop: 10,
+        paddingBottom: 10,
+        paddingLeft: 15,
+        borderRadius: 5,
+      },
+      buttonContainer: {
+        marginTop: 20,
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+      },
+      addButton: {
+        backgroundColor: '#007bff',
+        paddingVertical: 12,
+        paddingHorizontal: 25,
+        borderRadius: 8,
+      },
+      cancelButton: {
+        backgroundColor: '#dc3545',
+        paddingVertical: 12,
+        paddingHorizontal: 25,
+        borderRadius: 8,
+      },
+      buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+        textAlign: 'center',
       },
 })
 
