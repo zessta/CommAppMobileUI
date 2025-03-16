@@ -359,6 +359,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
+    marginRight: 10,
   },
   translateText: { color: '#FFF', fontWeight: '600' },
   translatedText: { marginLeft: 10, fontSize: 14, color: '#424242' },
