@@ -1,267 +1,383 @@
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
+import { GiftedChat, IMessage } from 'react-native-gifted-chat';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { v4 as uuidv4 } from 'uuid';
 import { useUser } from '@/components/UserContext';
+import { useSignalR } from '@/services/signalRService';
+import { getGroupChatHistory, getGroupUsers } from '@/services/api/auth';
 import { SOCKET_URL } from '@/constants/Strings';
 import { ChatMessageServer, Group, Participants } from '@/constants/Types';
-import { getGroupChatHistory, getGroupUsers } from '@/services/api/auth';
-import { useSignalR } from '@/services/signalRService';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { GiftedChat, IMessage } from 'react-native-gifted-chat';
-import { v4 as uuidv4 } from 'uuid'; // Import uuid for generating unique message IDs
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import Translator from 'react-native-translator';
 import AddMembersToGroup from './AddMemberToGroup';
+import Checkbox from 'expo-checkbox';
 
-type GroupChatScreenProps = {
-  selectedGroup: string;
-};
+// Custom Components
+const HeaderLeft = ({ onBack, groupName }: { onBack: () => void; groupName: string }) => (
+  <View style={styles.headerLeft}>
+    <TouchableOpacity onPress={onBack} style={styles.headerButton}>
+      <IconSymbol size={28} name="arrow-back" color={'#fff'} />
+    </TouchableOpacity>
+    <Image
+      source={{
+        uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${groupName || 'Default'}`,
+      }}
+      style={styles.avatar}
+    />
+  </View>
+);
 
-const GroupChatScreen: React.FC = () => {
-  const searchParams = useLocalSearchParams<GroupChatScreenProps>();
-  const selectedGroup: Group = searchParams.selectedGroup
-    ? JSON.parse(searchParams.selectedGroup)
-    : null;
+const HeaderRight = ({ onAddMember }: { onAddMember: () => void }) => (
+  <View style={styles.headerRight}>
+    <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
+      <IconSymbol size={28} name="poll" color={'#fff'} />
+    </TouchableOpacity>
+    <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
+      <IconSymbol size={28} name="adduser" color={'#fff'} />
+    </TouchableOpacity>
+  </View>
+);
 
-  const { user } = useUser(); // Access the user from context
-  const connection = useSignalR(SOCKET_URL);
-  const [messages, setMessages] = useState<IMessage[]>([]);
-  const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
-  const [groupUserList, setGroupUsersList] = useState<Participants[]>([]);
+const HeaderTitle = ({ title, onPress }: { title: string; onPress: () => void }) => (
+  <TouchableOpacity onPress={onPress} style={styles.headerTitleContainer}>
+    <Text style={styles.headerTitle}>{title}</Text>
+  </TouchableOpacity>
+);
 
-  const handleIncomingMessage = useCallback((chatMes: ChatMessageServer) => {
-    setMessages((prevMessages) =>
-      GiftedChat.append(prevMessages, [
-        {
-          _id: chatMes.id || uuidv4(), // Use unique ID from server or generate if not available
-          text: chatMes.messageText,
-          createdAt: new Date(chatMes.createdOn).getTime(),
-          user: { _id: chatMes.senderId, name: 'Test' }, // Replace with actual user data
-        },
-      ]),
-    );
+const Placeholder = () => (
+  <View style={styles.placeholderContainer}>
+    <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
+  </View>
+);
+
+const TranslateBar = ({
+  onTranslate,
+  enteredText,
+  setTranslatedText,
+}: {
+  onTranslate: (result: string) => void;
+  enteredText: string;
+  setTranslatedText: React.Dispatch<React.SetStateAction<string>>;
+}) => {
+  const [result, setResult] = useState<string>(''); // Translated result
+  const [transLang, setTransLang] = useState<string>('te'); // Default: Telugu
+  const [isTeluguChecked, setIsTeluguChecked] = useState(true);
+  const [isHindiChecked, setIsHindiChecked] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const languageList = useMemo(
+    () => [
+      { value: 'te', title: 'Telugu' },
+      { value: 'hi', title: 'Hindi' },
+    ],
+    [],
+  );
+
+  // Handle language change
+  const handleLangChange = useCallback((lang: string) => {
+    if (lang === 'te') {
+      setIsTeluguChecked(true);
+      setIsHindiChecked(false);
+      setTransLang('te');
+    } else if (lang === 'hi') {
+      setIsTeluguChecked(false);
+      setIsHindiChecked(true);
+      setTransLang('hi');
+    }
   }, []);
 
+  // Trigger translation when enteredText or transLang changes
   useEffect(() => {
-    if (connection) {
-      connection.on('GroupMemberAdded', (groupId: number, newMember: string) => {
-        console.log('GroupMemberAdded:', groupId, newMember);
-      });
-
-      connection.on('AddedToGroup', (groupId: number, groupName: string) => {
-        console.log('AddedToGroup:', groupId, groupName);
-      });
-
-      getGroupConversationHistory();
+    if (enteredText && enteredText !== 'Enter a URL') {
+      setResult(''); // Reset result to trigger new translation
     }
+  }, [enteredText, transLang]);
 
-    return () => {
-      if (connection) {
-        connection.off('GroupMemberAdded');
-        connection.off('AddedToGroup');
-      }
-    };
-  }, [connection]);
-
-  const getGroupConversationHistory = async () => {
-    const groupUsers: Participants[] = await getGroupUsers(selectedGroup.groupId);
-    setGroupUsersList(groupUsers);
-    const groupChatHistory: ChatMessageServer[] = await getGroupChatHistory(selectedGroup.groupId);
-    if (groupChatHistory.length) {
-      const formattedMessages = groupChatHistory.map((chat: ChatMessageServer) => ({
-        _id: chat.messageId || uuidv4(),
-        text: chat.messageText,
-        createdAt: new Date(chat.createdOn).getTime(),
-        user: {
-          _id: chat.senderId,
-          name: groupUsers.find((user) => user.userId === chat.senderId)?.userName,
-        },
-      }));
-      setMessages((prevMessages) => GiftedChat.append(prevMessages, formattedMessages));
-    }
-  };
-
-  const onSend = useCallback(
-    (newMessages: IMessage[] = []) => {
-      if (newMessages.length > 0) {
-        const message = newMessages[0];
-        if (connection && connection.state === 'Connected') {
-          sendMessage(message.text);
-        }
-      }
-    },
-    [connection, user],
-  );
-
-  const sendMessage = async (messageText: string) => {
-    try {
-      await connection!.invoke('SendMessageToGroup', selectedGroup.groupId, messageText);
-      console.log('coming here for sending mesg');
-    } catch (error) {
-      console.error('Error sending message: ', error);
-    }
-  };
-
-  const handleReceivedMessage = useCallback(
-    (senderName: string, senderId: number, message: string, groupName: string, groupId: number) => {
-      console.log('recived mesaage', senderName, senderId, message, groupName, groupId);
-      setMessages((prevMessages) =>
-        GiftedChat.append(prevMessages, [
-          {
-            _id: groupId || uuidv4(),
-            text: message,
-            createdAt: new Date().getTime(),
-            user: { _id: senderId, name: senderName },
-          },
-        ]),
-      );
-    },
-    [user],
-  );
-
-  useEffect(() => {
-    if (connection) {
-      connection.on('ReceiveGroupMessage', handleReceivedMessage);
-      return () => {
-        connection.off('ReceiveGroupMessage', handleReceivedMessage);
-      };
-    }
-  }, [connection, handleReceivedMessage]);
-
-  const renderFooter = () => {
-    if (messages.length === 0) {
-      return (
-        <View style={styles.placeholderContainer}>
-          <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
-        </View>
-      );
-    }
-    return null;
-  };
-
-  const handleAddMember = () => {
-    setIsDialogVisible(true);
-    console.log('Add Member clicked');
-  };
-
-  const onPressGroupTitle = () => {
-    router.push({
-      pathname: '/GroupStack/GroupDetailsScreen',
-      params: {
-        group: JSON.stringify(selectedGroup),
-        groupUsers: JSON.stringify(groupUserList),
-      },
-    });
-  };
+  // Handle translation button press
+  const handleTranslateButtonPress = useCallback(() => {
+    if (!enteredText || result === 'Enter a URL') return;
+    setLoading(true);
+    setTimeout(() => {
+      setTranslatedText(result); // Update parent state
+      onTranslate(result); // Notify parent
+      setLoading(false);
+    }, 1000); // Reduced delay for better UX
+  }, [enteredText, result, onTranslate, setTranslatedText]);
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerTitle: () => (
-            <TouchableOpacity
-              onPress={() => onPressGroupTitle()}
-              style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>{selectedGroup.groupName}</Text>
-            </TouchableOpacity>
-          ),
-          headerLargeStyle: { backgroundColor: 'blue' },
-          headerLeft: () => (
-            <View style={styles.headerLeft}>
-              <TouchableOpacity style={styles.headerButton} onPress={() => router.back()}>
-                <IconSymbol size={28} name="arrow-back" color={'black'} />
-              </TouchableOpacity>
-              <Image
-                source={{
-                  uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${selectedGroup?.groupName || 'Default'}`,
-                }}
-                style={styles.avatar}
-              />
-            </View>
-          ),
-          headerRight: () => (
-            <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.addButton} onPress={handleAddMember}>
-                <IconSymbol size={28} name="poll" color={'black'} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.addButton} onPress={handleAddMember}>
-                <IconSymbol size={28} name="adduser" color={'black'} />
-              </TouchableOpacity>
-            </View>
-          ),
-          headerTitleStyle: styles.headerTitle,
-        }}
-      />
-      {!isDialogVisible ? (
-        <GiftedChat
-          messages={messages}
-          onSend={(messages) => onSend(messages)}
-          renderUsernameOnMessage={true}
-          user={{
-            _id: Number(user?.id),
-            name: user?.name,
-            avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${user?.name}`,
-          }}
-          renderFooter={renderFooter}
-          inverted
-        />
-      ) : (
-        <AddMembersToGroup
-          setIsDialogVisible={setIsDialogVisible}
-          selectedGroup={selectedGroup}
-          groupUserList={groupUserList}
+    <View style={styles.translateContainer}>
+      {languageList.map((lang) => (
+        <View style={styles.checkboxRow} key={lang.value}>
+          <Checkbox
+            value={lang.value === 'te' ? isTeluguChecked : isHindiChecked}
+            onValueChange={() => handleLangChange(lang.value)}
+            style={styles.checkbox}
+          />
+          <Text style={styles.checkboxText}>{lang.title}</Text>
+        </View>
+      ))}
+      <TouchableOpacity style={styles.translateButton} onPress={handleTranslateButtonPress}>
+        {loading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={styles.translateText}>Translate</Text>
+        )}
+      </TouchableOpacity>
+      {enteredText && (
+        <Translator
+          from="en"
+          to={transLang}
+          value={enteredText}
+          onTranslated={(t) => setResult(t)}
         />
       )}
     </View>
   );
 };
 
+const AcceptButton = ({ onAccept }: { onAccept: () => void }) => (
+  <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
+    <Text style={styles.acceptText}>Accept</Text>
+  </TouchableOpacity>
+);
+
+// Main Component
+const GroupChatScreen: React.FC = () => {
+  const { selectedGroup: selectedGroupString } = useLocalSearchParams<{ selectedGroup: string }>();
+  const selectedGroup: Group = useMemo(
+    () => (selectedGroupString ? JSON.parse(selectedGroupString) : null),
+    [selectedGroupString],
+  );
+  const { user } = useUser();
+  const connection = useSignalR(SOCKET_URL);
+
+  const [messages, setMessages] = useState<IMessage[]>([]);
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
+  const [groupUsers, setGroupUsers] = useState<Participants[]>([]);
+  const [enteredText, setEnteredText] = useState('');
+  const [translatedText, setTranslatedText] = useState('');
+
+  const groupUsersMemo = useMemo(() => groupUsers, [groupUsers]);
+
+  // Fetch group chat history and users
+  const fetchGroupData = useCallback(async () => {
+    if (!selectedGroup?.groupId) return;
+    try {
+      const [users, history] = await Promise.all([
+        getGroupUsers(selectedGroup.groupId),
+        getGroupChatHistory(selectedGroup.groupId),
+      ]);
+      setGroupUsers(users);
+      const formattedMessages = history.map((chat: ChatMessageServer) => ({
+        _id: uuidv4(),
+        text: chat.messageText,
+        createdAt: new Date(chat.createdOn).getTime(),
+        user: {
+          _id: chat.senderId,
+          name: users.find((u) => u.userId === chat.senderId)?.userName || 'Unknown',
+        },
+      }));
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('Error fetching group data:', error);
+    }
+  }, []);
+
+  // Setup SignalR listeners
+  useEffect(() => {
+    if (!connection) return;
+
+    const handleReceiveMessage = (
+      senderId: number,
+      message: string,
+      groupName: string,
+      groupId: number,
+    ) => {
+      setMessages((prev) =>
+        GiftedChat.append(prev, [
+          {
+            _id: groupId || uuidv4(),
+            text: message,
+            createdAt: new Date().getTime(),
+            user: {
+              _id: senderId,
+              name: groupUsers.find((u) => u.userId === senderId)?.userName || 'Unknown',
+            },
+          },
+        ]),
+      );
+    };
+
+    const handleMemberAdded = (groupId: number, newMember: string) => {
+      console.log('GroupMemberAdded:', groupId, newMember);
+    };
+
+    connection.on('ReceiveGroupMessage', handleReceiveMessage);
+    connection.on('GroupMemberAdded', handleMemberAdded);
+    fetchGroupData();
+
+    return () => {
+      connection.off('ReceiveGroupMessage', handleReceiveMessage);
+      connection.off('GroupMemberAdded', handleMemberAdded);
+    };
+  }, [connection, fetchGroupData]);
+
+  // Send message via SignalR
+  const onSend = useCallback(
+    async (newMessages: IMessage[] = []) => {
+      if (!newMessages.length || !connection || connection.state !== 'Connected') return;
+      const message = newMessages[0];
+      try {
+        await connection.invoke('SendMessageToGroup', selectedGroup.groupId, message.text);
+        setEnteredText(''); // Clear input after sending
+        fetchGroupData();
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
+    },
+    [connection, selectedGroup?.groupId],
+  );
+
+  // Handle translation
+  const handleTranslate = useCallback((trans: string) => {
+    if (!trans || trans === 'Enter a URL') return;
+    setTranslatedText(trans);
+  }, []);
+
+  // Accept translated text
+  const handleAcceptTranslation = useCallback(() => {
+    setEnteredText(translatedText);
+    setTranslatedText('');
+  }, [translatedText]);
+
+  // Navigate to group details
+  const navigateToGroupDetails = useCallback(() => {
+    router.push({
+      pathname: '/GroupStack/GroupDetailsScreen',
+      params: {
+        group: JSON.stringify(selectedGroup),
+        groupUsers: JSON.stringify(groupUsers),
+      },
+    });
+  }, [selectedGroup, groupUsers]);
+
+  return (
+    <View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerStyle: { backgroundColor: '#1E88E5' },
+          headerLeft: () => (
+            <HeaderLeft onBack={() => router.back()} groupName={selectedGroup?.groupName} />
+          ),
+          headerTitle: () => (
+            <HeaderTitle
+              title={selectedGroup?.groupName || 'Group Chat'}
+              onPress={navigateToGroupDetails}
+            />
+          ),
+          headerRight: () => <HeaderRight onAddMember={() => setIsDialogVisible(true)} />,
+        }}
+      />
+      {isDialogVisible ? (
+        <AddMembersToGroup
+          setIsDialogVisible={setIsDialogVisible}
+          selectedGroup={selectedGroup}
+          groupUserList={groupUsers}
+        />
+      ) : (
+        <View style={styles.chatContainer}>
+          <GiftedChat
+            messages={messages}
+            onSend={onSend}
+            user={{
+              _id: Number(user?.id),
+              name: user?.name,
+              avatar: `https://ui-avatars.com/api/?background=1E88E5&color=FFF&name=${user?.name || 'User'}`,
+            }}
+            renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
+            onInputTextChanged={setEnteredText}
+            text={enteredText}
+            placeholder="Type a message..."
+            // inverted
+            renderBubble={(props) => (
+              <View
+                style={[
+                  styles.bubble,
+                  {
+                    backgroundColor:
+                      props.currentMessage.user._id === user?.id ? '#1E88E5' : '#E0E0E0',
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.bubbleText,
+                    {
+                      color: props.currentMessage.user._id === user?.id ? '#FFF' : '#333',
+                    },
+                  ]}>
+                  {props.currentMessage.text}
+                </Text>
+              </View>
+            )}
+          />
+          <TranslateBar
+            onTranslate={handleTranslate}
+            enteredText={enteredText}
+            setTranslatedText={setTranslatedText}
+          />
+          {translatedText && <Text style={styles.translatedText}>{translatedText}</Text>}
+          {translatedText && <AcceptButton onAccept={handleAcceptTranslation} />}
+        </View>
+      )}
+    </View>
+  );
+};
+
+// Styles (unchanged)
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  placeholderContainer: {
-    padding: 10,
-    alignItems: 'center',
-  },
-  placeholderText: {
-    fontSize: 16,
-    color: '#aaa',
-    fontStyle: 'italic',
-  },
-  headerLeft: {
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  chatContainer: { flex: 1 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', marginLeft: 10 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', marginRight: 10 },
+  headerButton: { padding: 5 },
+  headerIcon: { padding: 5, marginLeft: 10 },
+  headerTitleContainer: { paddingVertical: 10 },
+  headerTitle: { fontSize: 20, fontWeight: '600', color: '#FFF' },
+  placeholderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  placeholderText: { fontSize: 16, color: '#757575', fontStyle: 'italic' },
+  translateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 10,
+    padding: 10,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  headerButton: {
-    marginRight: 10,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
+  translateButton: {
+    backgroundColor: '#1E88E5',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 20,
     marginRight: 10,
   },
-  headerRight: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+  translateText: { color: '#FFF', fontWeight: '600' },
+  translatedText: { marginLeft: 10, fontSize: 14, color: '#424242' },
+  acceptButton: {
+    backgroundColor: '#43A047',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    alignSelf: 'center',
+    margin: 10,
   },
-  addButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 10,
-  },
-  headerTitleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingRight: 40, // Space for right buttons
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'black',
-  },
+  acceptText: { color: '#FFF', fontWeight: '600' },
+  bubble: { borderRadius: 15, padding: 10, marginVertical: 5, maxWidth: '75%' },
+  bubbleText: { fontSize: 16 },
+  avatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
+  checkboxRow: { flexDirection: 'row', alignItems: 'center', marginRight: 15 },
+  checkbox: { marginRight: 5 },
+  checkboxText: { fontSize: 16 },
 });
 
 export default GroupChatScreen;

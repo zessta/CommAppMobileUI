@@ -13,7 +13,6 @@ const GroupDetailsScreen = () => {
   const router = useRouter();
   const groupInfo: Group = JSON.parse(searchParams.group);
   const groupUserList: Participants[] = JSON.parse(searchParams.groupUsers);
-
   // Render group members in a FlatList
   const renderItem = ({ item }: { item: Participants }) => (
     <View style={styles.memberItem}>
