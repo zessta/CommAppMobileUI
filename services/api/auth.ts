@@ -78,3 +78,25 @@ export const getGroupUsers = async (groupId: number) => {
     handleError(error); // Handle error response
   }
 };
+
+export const uploadImage = async (uri: string): Promise<string | null> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', {
+      uri,
+      type: 'image/jpeg',
+      name: 'photo.jpg',
+    } as any); // FormData typing workaround
+
+    const response = await client.post(`${ENDPOINTS.uploadImage}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        // Removed formData.getHeaders as it does not exist on FormData type
+      },
+    });
+
+    return handleSuccess(response); // Handle successful response and return attachmentId
+  } catch (error) {
+    return handleError(error); // Handle error response and return null
+  }
+};

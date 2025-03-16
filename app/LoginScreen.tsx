@@ -1,12 +1,17 @@
+import ScreenLoader from '@/components/ScreenLoader';
 import { useUser } from '@/components/UserContext';
 import { CHAT_TEST_DATA } from '@/constants/Strings';
-import { login } from '@/services/api/auth'; // Import login function from API
+import { useIsNavigationReady } from '@/hooks/useIsNavigationReady';
+import { login } from '@/services/api/auth';
 import { extractUsername } from '@/Utils/utils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -16,134 +21,181 @@ import {
 
 const LoginScreen = () => {
   const router = useRouter();
-  const [input, setInput] = useState<string>(''); // For email/phone input
-  const [password, setPassword] = useState<string>(''); // For password input
-  const [loading, setLoading] = useState<boolean>(false);
-  const { setUser } = useUser(); // Get the setter function from context
+  const [input, setInput] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [buttonLoading, setButtonLoading] = useState<boolean>(false);
+  const { setUser } = useUser();
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const isNavigationReady = useIsNavigationReady();
 
-  // Check if the token already exists on component mount
   useEffect(() => {
     const checkToken = async () => {
-      const token = await AsyncStorage.getItem('authToken');
-      const userInfo = await AsyncStorage.getItem('userData');
-      setUser(JSON.parse(userInfo!)); // Save user data in context
-
-      if (token) {
-        // Token exists, automatically navigate to chat list screen
-        router.push({ pathname: '/(tabs)/chatListScreen' });
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const userInfo = await AsyncStorage.getItem('userData');
+        if (token && userInfo) {
+          setUser(JSON.parse(userInfo));
+          router.push({ pathname: '/(tabs)/chatListScreen' });
+        } else {
+          setLoading(false);
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }).start();
+        }
+      } catch (error) {
+        console.error('Error checking token:', error);
+        setLoading(false);
       }
     };
-
+    // if (isNavigationReady) {
+    // router.push({ pathname: '/(tabs)/chatListScreen' });
+    // }
     checkToken();
-  }, [router]); // Empty dependency array means it runs once on mount
+  }, [router, fadeAnim]);
 
   const handleLogin = async () => {
-    setLoading(true);
-
+    setButtonLoading(true);
     try {
-      // Call the login function from the API service
       const userData = await login(input, password);
       const userNameFromMail = extractUsername(input);
-      // If login is successful
       if (userData) {
         const getTestInfo = CHAT_TEST_DATA.find(
           (chat) => chat.name.toLowerCase() === userNameFromMail,
         );
         await AsyncStorage.setItem('userData', JSON.stringify(getTestInfo));
-
-        console.log('getTestInfo', getTestInfo);
-        setUser(getTestInfo!); // Save user data in context
-        await AsyncStorage.setItem('authToken', userData.token); // Save token to AsyncStorage
-
-        // Redirect to chat list screen
+        setUser(getTestInfo!);
+        await AsyncStorage.setItem('authToken', userData.token);
         router.push({ pathname: '/(tabs)/chatListScreen', params: { userInputName: input } });
       }
     } catch (error) {
       console.error('Login failed', error);
     } finally {
-      setLoading(false);
+      setButtonLoading(false);
     }
   };
 
-  const removeItems = async () => {
-    await AsyncStorage.removeItem('authToken');
-  };
+  if (loading) {
+    return <ScreenLoader />;
+  }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}>
+      <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
+        <View style={styles.logoContainer}>
+          <Text style={styles.logo}>📐</Text>
+        </View>
+        <Text style={styles.header}>Sign in</Text>
+        <Text style={styles.subtitle}>Sign in to continue to Chat.</Text>
         <View style={styles.form}>
-          <Text style={styles.title}>Enter Email or Mobile Number</Text>
+          <Text style={styles.label}>Email id</Text>
           <TextInput
             style={styles.input}
-            placeholder="Email or Mobile"
-            placeholderTextColor="#000"
+            placeholder="Enter your email id"
+            placeholderTextColor="#888"
             value={input}
             onChangeText={setInput}
+            autoCapitalize="none"
+            keyboardType="email-address"
           />
-          <Text style={styles.title}>Enter Password</Text>
+
+          <Text style={styles.label}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#000"
+            placeholder="Enter your password"
+            placeholderTextColor="#888"
             secureTextEntry
             value={password}
             onChangeText={setPassword}
           />
-          <TouchableOpacity onPress={handleLogin} style={styles.button}>
-            {loading ? (
+          <TouchableOpacity onPress={handleLogin} style={styles.button} disabled={buttonLoading}>
+            {buttonLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Login</Text>
+              <Text style={styles.buttonText}>Sign In</Text>
             )}
           </TouchableOpacity>
         </View>
-      </View>
-    </View>
+      </Animated.View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    display: 'flex',
+    flex: 1,
+    backgroundColor: '#F5F7FA',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    height: '100%',
     width: '100%',
+    height: '100%',
   },
   card: {
-    borderRadius: 10,
-    width: '80%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    width: '85%',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logo: {
+    fontSize: 40,
+    color: '#6B46C1',
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
   },
   form: {
-    padding: 20,
+    width: '100%',
   },
-  title: {
-    color: '#000',
-    fontSize: 18,
-    marginBottom: 10,
-    padding: 10,
-    fontWeight: '900',
+  label: {
+    fontSize: 14,
+    color: '#444',
+    marginBottom: 5,
+    fontWeight: '500',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#444',
-    color: '#000',
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F9FAFB',
+    color: '#333',
     width: '100%',
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 10,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    fontSize: 14,
   },
   button: {
-    backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 5,
+    backgroundColor: '#6B46C1',
+    borderRadius: 8,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
   },
 });
 
