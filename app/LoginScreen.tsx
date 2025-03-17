@@ -1,3 +1,4 @@
+import LoginImage from '@/assets/svgs/LoginImage';
 import ScreenLoader from '@/components/ScreenLoader';
 import { useUser } from '@/components/UserContext';
 import { CHAT_TEST_DATA } from '@/constants/Strings';
@@ -87,7 +88,7 @@ const LoginScreen = () => {
       style={styles.container}>
       <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
         <View style={styles.logoContainer}>
-          <Text style={styles.logo}>📐</Text>
+          <LoginImage />
         </View>
         <Text style={styles.header}>Sign in</Text>
         <Text style={styles.subtitle}>Sign in to continue to Chat.</Text>

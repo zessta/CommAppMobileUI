@@ -16,6 +16,8 @@ const MAPPING = {
   person: 'person',
   contacts: 'contacts',
   image: 'image', // Added mapping for 'image'
+  'emoji-emotions': 'emoji-emotions',
+  send: 'send',
 } as const; // Use 'as const' to make the object readonly and improve type inference
 
 // Derive the type of valid icon names from MAPPING

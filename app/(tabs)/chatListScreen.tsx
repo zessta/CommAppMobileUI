@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   BackHandler,
   Alert,
@@ -17,7 +17,7 @@ import { ChatConversationType } from '@/constants/Types';
 import { getLastChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 const ChatListScreen = () => {
   const [searchText, setSearchText] = useState('');
@@ -31,31 +31,30 @@ const ChatListScreen = () => {
   // Join chat when the connection is available
   useEffect(() => {
     joinChat();
-
-    // Handle Android back button press
-    const backAction = () => {
-      Alert.alert('Exit App', 'Are you sure you want to exit the app?', [
-        {
-          text: 'No',
-          onPress: () => null,
-          style: 'cancel',
-        },
-        {
-          text: 'Yes',
-          onPress: () => {
-            BackHandler.exitApp();
-          },
-        },
-      ]);
-      return true; // Prevent default behavior (app exit)
-    };
-
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-
-    return () => {
-      backHandler.remove();
-    };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const backAction = () => {
+        Alert.alert('Exit App', 'Are you sure you want to exit the app?', [
+          {
+            text: 'No',
+            onPress: () => null,
+            style: 'cancel',
+          },
+          {
+            text: 'Yes',
+            onPress: () => BackHandler.exitApp(),
+          },
+        ]);
+        return true; // Prevents the app from closing
+      };
+
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+      return () => backHandler.remove(); // Remove listener when screen is not focused
+    }, []),
+  );
 
   useEffect(() => {
     if (connection) {
@@ -142,7 +141,7 @@ const ChatListScreen = () => {
             <Text style={styles.name}>{item.participants[0].userName}</Text>
             <Text style={styles.message}>
               {item.lastMessageSenderId === user?.id ? 'You' : item.lastMessageSenderName}:{' '}
-              {item.lastMessage}
+              {!item.lastMessage && item.conversationId ? 'Attachment' : item.lastMessage}
             </Text>
             <Text style={styles.time}>{formattedTimeString(item.lastMessageTime)}</Text>
           </TouchableOpacity>
@@ -207,6 +206,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555',
     marginVertical: 5,
+    fontStyle: 'italic',
   },
   time: {
     fontSize: 12,

@@ -115,7 +115,6 @@ const ContactScreen = () => {
           <Text style={styles.loaderText}>Loading contacts...</Text>
         </View>
       ) : null}
-      // Contacts List using FlatList with Pull-to-Refresh functionality
       <FlatList
         data={filteredContacts}
         renderItem={renderContact}

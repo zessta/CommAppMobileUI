@@ -3,6 +3,7 @@ import client from './client';
 import { ENDPOINTS } from './endpoints';
 import { handleSuccess, handleError } from './responseHandler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { encode } from 'base64-arraybuffer';
 
 export const login = async (email: string, password: string) => {
   try {
@@ -79,7 +80,7 @@ export const getGroupUsers = async (groupId: number) => {
   }
 };
 
-export const uploadImage = async (uri: string): Promise<string | null> => {
+export const uploadImage = async (uri: string) => {
   try {
     const formData = new FormData();
     formData.append('file', {
@@ -98,5 +99,23 @@ export const uploadImage = async (uri: string): Promise<string | null> => {
     return handleSuccess(response); // Handle successful response and return attachmentId
   } catch (error) {
     return handleError(error); // Handle error response and return null
+  }
+};
+
+export const getImageById = async (attachmentId: number) => {
+  try {
+    const response = await client.get(
+      `${ENDPOINTS.getImage.replace('{id}', attachmentId.toString())}`,
+      { responseType: 'arraybuffer' }, // Ensure binary response
+    );
+
+    const base64String = encode(response.data);
+
+    const mimeType = response.headers['content-type'] || 'image/jpeg';
+
+    // Format as a Base64 URI
+    return `data:${mimeType};base64,${base64String}`;
+  } catch (error) {
+    handleError(error); // Handle error response
   }
 };
