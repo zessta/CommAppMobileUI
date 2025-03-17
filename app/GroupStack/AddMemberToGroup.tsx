@@ -5,7 +5,7 @@ import { getUserList } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import Checkbox from 'expo-checkbox';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import React, { Dispatch, SetStateAction, useEffect, useState, useCallback } from 'react';
 import {
   Animated,
   FlatList,
@@ -15,60 +15,123 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
 
-const AddMembersToGroup = ({
-  setIsDialogVisible,
-  selectedGroup,
-  groupUserList,
-}: {
+interface AddMembersToGroupProps {
   setIsDialogVisible: Dispatch<SetStateAction<boolean>>;
   selectedGroup: Group;
   groupUserList: Participants[];
+}
+
+const AddMembersToGroup: React.FC<AddMembersToGroupProps> = ({
+  setIsDialogVisible,
+  selectedGroup,
+  groupUserList,
 }) => {
   const { user } = useUser();
   const connection = useSignalR(SOCKET_URL);
   const [contactsList, setContactsList] = useState<UserListType[]>([]);
-  const [selectedContact, setSelectedContact] = useState<number | null>(null);
+  const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.95));
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (connection) {
-      getContactsList();
-      connection.on('GroupMemberAdded', (groupId: number, newMember: string) => {
-        console.log('GroupMemberAdded:', groupId, newMember);
-      });
-      connection.on('AddedToGroup', (groupId: number, groupName: string) => {
-        console.log('AddedToGroup:', groupId, groupName);
-      });
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.spring(scaleAnim, { toValue: 1, friction: 8, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [connection]);
+  const getContactsList = useCallback(async () => {
+    if (!connection || !selectedGroup?.groupId) return;
 
-  const getContactsList = async () => {
-    const getAllUsers: UserListType[] = await getUserList();
-    if (getAllUsers.length) {
-      const filteredUsers = getAllUsers.filter(
-        (contact) => !groupUserList.some((groupUser) => groupUser.userId === contact.userId),
+    try {
+      setIsLoading(true);
+      const allUsers: UserListType[] = await getUserList();
+      const filteredUsers = allUsers.filter(
+        (contact) =>
+          contact.userId !== user?.id && // Exclude current user
+          !groupUserList.some((groupUser) => groupUser.userId === contact.userId),
       );
       setContactsList(filteredUsers);
+    } catch (err) {
+      setError('Failed to load contacts');
+      console.error('Error fetching contacts:', err);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [connection, selectedGroup?.groupId, groupUserList, user?.id]);
+
+  useEffect(() => {
+    if (!connection || !selectedGroup?.groupId) return;
+
+    const setupConnection = async () => {
+      try {
+        if (connection.state === 'Disconnected') {
+          await connection.start();
+        }
+        await getContactsList();
+
+        // Set up event listeners
+        connection.on('GroupMemberAdded', (groupId: number, newMember: string) => {
+          console.log('GroupMemberAdded:', groupId, newMember);
+          if (groupId === selectedGroup.groupId) {
+            getContactsList(); // Refresh only if it's the current group
+          }
+        });
+
+        connection.on('AddedToGroup', (groupId: number, groupName: string) => {
+          console.log('AddedToGroup:', groupId, groupName);
+        });
+
+        // Animate modal appearance
+        Animated.parallel([
+          Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.spring(scaleAnim, { toValue: 1, friction: 8, useNativeDriver: true }),
+        ]).start();
+      } catch (err) {
+        setError('Failed to initialize connection');
+        console.error('Connection error:', err);
+      }
+    };
+
+    setupConnection();
+
+    return () => {
+      connection.off('GroupMemberAdded');
+      connection.off('AddedToGroup');
+    };
+  }, [connection, selectedGroup?.groupId, getContactsList, fadeAnim, scaleAnim]);
 
   const toggleContactSelection = (contactId: number) => {
-    setSelectedContact(selectedContact === contactId ? null : contactId);
+    setSelectedContactIds((prev) =>
+      prev.includes(contactId) ? prev.filter((id) => id !== contactId) : [...prev, contactId],
+    );
   };
 
-  const addMemberToGroup = async () => {
-    if (!selectedContact) return alert('Please select a member to add');
-    await connection!.invoke('AddMemberToGroup', selectedGroup.groupId, selectedContact);
-    alert('Member added successfully');
-    setIsDialogVisible(false);
+  const addMembersToGroup = async () => {
+    if (!selectedContactIds.length) {
+      alert('Please select at least one member to add');
+      return;
+    }
+
+    if (!connection || connection.state !== 'Connected') {
+      alert('Connection not established');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      for (const contactId of selectedContactIds) {
+        await connection.invoke('AddMemberToGroup', selectedGroup.groupId, contactId);
+      }
+      alert('Members added successfully');
+      setSelectedContactIds([]);
+      setIsDialogVisible(false);
+      getContactsList(); // Refresh contacts after successful addition
+    } catch (err) {
+      setError('Failed to add members');
+      console.error('Error adding members:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const closeModal = () => {
@@ -77,6 +140,24 @@ const AddMembersToGroup = ({
       Animated.timing(scaleAnim, { toValue: 0.95, duration: 200, useNativeDriver: true }),
     ]).start(() => setIsDialogVisible(false));
   };
+
+  const renderContact = ({ item }: { item: UserListType }) => (
+    <TouchableOpacity
+      style={[
+        styles.contactCard,
+        selectedContactIds.includes(item.userId) && styles.selectedContact,
+      ]}
+      onPress={() => toggleContactSelection(item.userId)}
+      activeOpacity={0.7}>
+      <Checkbox
+        value={selectedContactIds.includes(item.userId)}
+        onValueChange={() => toggleContactSelection(item.userId)}
+        style={styles.checkbox}
+        color={selectedContactIds.includes(item.userId) ? '#4a90e2' : '#ccc'}
+      />
+      <Text style={styles.contactName}>{item.userName}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <Modal visible={true} animationType="none" transparent onRequestClose={closeModal}>
@@ -91,44 +172,43 @@ const AddMembersToGroup = ({
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradientBackground}>
-            <Text style={styles.dialogTitle}>Add Member to Group</Text>
+            <Text style={styles.dialogTitle}>Add Members to Group</Text>
 
-            <Text style={styles.label}>Select a Member</Text>
-            <FlatList
-              data={contactsList}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.contactCard,
-                    selectedContact === item.userId && styles.selectedContact,
-                  ]}
-                  onPress={() => toggleContactSelection(item.userId)}>
-                  <Checkbox
-                    value={selectedContact === item.userId}
-                    onValueChange={() => toggleContactSelection(item.userId)}
-                    style={styles.checkbox}
-                    color={selectedContact === item.userId ? '#4a90e2' : '#ccc'}
-                  />
-                  <Text style={styles.contactName}>{item.userName}</Text>
-                </TouchableOpacity>
-              )}
-              keyExtractor={() => uuidv4()}
-              // contentContainerStyle={styles.contactListContainer}
-              style={styles.contactList} // Added style to limit height and enable scroll
-            />
+            {error && <Text style={styles.errorText}>{error}</Text>}
 
-            {/* Buttons Container (Fixed at Bottom) */}
+            {isLoading && contactsList.length === 0 ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#4a90e2" />
+              </View>
+            ) : (
+              <>
+                <Text style={styles.label}>Select Members</Text>
+                <FlatList
+                  data={contactsList}
+                  renderItem={renderContact}
+                  keyExtractor={(item) => item.userId.toString()}
+                  style={styles.contactList}
+                  ListEmptyComponent={
+                    !isLoading ? <Text style={styles.emptyText}>No contacts available</Text> : null
+                  }
+                />
+              </>
+            )}
+
             <View style={styles.buttonContainer}>
-              <TouchableOpacity onPress={addMemberToGroup}>
+              <TouchableOpacity onPress={addMembersToGroup} disabled={isLoading}>
                 <LinearGradient
                   colors={['#4a90e2', '#357abd']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={styles.addButton}>
-                  <Text style={styles.buttonText}>Add Member</Text>
+                  style={[styles.addButton, isLoading && styles.disabledButton]}>
+                  <Text style={styles.buttonText}>{isLoading ? 'Adding...' : 'Add Members'}</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity onPress={closeModal} style={styles.cancelButton}>
+              <TouchableOpacity
+                onPress={closeModal}
+                disabled={isLoading}
+                style={styles.cancelButton}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -148,7 +228,8 @@ const styles = StyleSheet.create({
   },
   dialogContainer: {
     width: '90%',
-    maxHeight: '80%', // Limits the overall dialog height
+    maxHeight: '80%',
+    minHeight: '40%',
     borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#fff',
@@ -160,14 +241,13 @@ const styles = StyleSheet.create({
   },
   gradientBackground: {
     padding: 20,
-    flex: 1, // Ensures the gradient background fills the container
+    flex: 1,
   },
   dialogTitle: {
     fontSize: 28,
     fontWeight: '700',
     color: '#2c3e50',
     marginBottom: 20,
-    letterSpacing: 0.5,
   },
   label: {
     fontSize: 18,
@@ -176,11 +256,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   contactList: {
-    maxHeight: 300, // Fixed height for the FlatList to enable scrolling
-    marginBottom: 20, // Space before buttons
-  },
-  contactListContainer: {
-    paddingBottom: 10,
+    maxHeight: 300,
+    marginBottom: 20,
   },
   contactCard: {
     flexDirection: 'row',
@@ -206,8 +283,6 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ccc',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -218,19 +293,19 @@ const styles = StyleSheet.create({
     right: 20,
   },
   addButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 35,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
     borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   cancelButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 35,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
     borderRadius: 12,
     backgroundColor: '#ecf0f1',
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#bdc3c7',
   },
@@ -238,13 +313,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    letterSpacing: 0.5,
   },
   cancelButtonText: {
     color: '#7f8c8d',
     fontSize: 16,
     fontWeight: '600',
-    letterSpacing: 0.5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 200,
+  },
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 16,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#7f8c8d',
+    textAlign: 'center',
+    padding: 20,
   },
 });
 

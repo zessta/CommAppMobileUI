@@ -1,6 +1,6 @@
 import { SOCKET_URL } from '@/constants/Strings';
 import { ChatDataProps, ChatMessageServer, ChatScreenProps } from '@/constants/Types';
-import { getUsersChatHistory, uploadImage } from '@/services/api/auth';
+import { getImageById, getUsersChatHistory, uploadImage } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import * as signalR from '@microsoft/signalr';
 import * as ImagePicker from 'expo-image-picker';
@@ -9,10 +9,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Composer, GiftedChat, IMessage, InputToolbar, Send } from 'react-native-gifted-chat';
 import { IconSymbol } from '../../components/ui/IconSymbol';
+import { v4 as uuidv4 } from 'uuid';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Define the interface for the API response (adjust based on your API)
 interface AttachmentUploadResponse {
-  attachmentId: string;
+  attachmentId: number;
 }
 
 const ChatScreen: React.FC = () => {
@@ -41,17 +43,20 @@ const ChatScreen: React.FC = () => {
   }, []);
 
   const handleIncomingMessage = useCallback(
-    (chatMes: ChatMessageServer, index: number, senderId: number, receiverId: number) => {
+    async (chatMes: ChatMessageServer, index: number, senderId: number, receiverId: number) => {
       const chatUserName: string =
         chatMes.senderId === senderId ? senderData?.name : receiverData.name;
       const message: IMessage = {
-        _id: chatMes.messageId,
+        _id: uuidv4(),
         text: chatMes.messageText,
         createdAt: Number(chatMes.createdOn),
         user: { _id: chatMes.senderId, name: chatUserName },
       };
       if (chatMes.attachmentId) {
-        message.image = `${SOCKET_URL}/attachments/${chatMes.attachmentId}`;
+        const attachmentResponse = await getImageById(chatMes.attachmentId);
+        if (attachmentResponse) {
+          message.image = attachmentResponse;
+        }
       }
       setMessages((prevMessages) => GiftedChat.append(prevMessages, [message]));
     },
@@ -80,11 +85,11 @@ const ChatScreen: React.FC = () => {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const uri: string = result.assets[0].uri;
-      const attachmentId: string | null = await uploadImage(uri);
-
-      if (attachmentId) {
+      const uploadImageResponse: AttachmentUploadResponse = await uploadImage(uri);
+      console.log('attachmentId', uploadImageResponse);
+      if (uploadImageResponse?.attachmentId) {
         const newMessage: IMessage = {
-          _id: Math.random().toString(36).substring(7),
+          _id: uuidv4(),
           text: '',
           createdAt: new Date(),
           user: {
@@ -95,7 +100,7 @@ const ChatScreen: React.FC = () => {
           image: uri,
         };
         setMessages((prevMessages) => GiftedChat.append(prevMessages, [newMessage]));
-        sendMessage('', attachmentId);
+        sendMessage('', uploadImageResponse?.attachmentId);
       }
     }
   };
@@ -113,9 +118,9 @@ const ChatScreen: React.FC = () => {
     [connection, senderData, receiverData],
   );
 
-  const sendMessage = async (messageText: string, attachmentId?: string) => {
+  const sendMessage = async (messageText: string, attachmentId?: number) => {
     try {
-      await connection!.invoke('SendMessageToUser', messageText, receiverData.id, 1, attachmentId);
+      await connection!.invoke('SendMessageToUser', messageText, receiverData.id, attachmentId);
       console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message: ', error);
@@ -123,7 +128,7 @@ const ChatScreen: React.FC = () => {
   };
 
   const handleReceivedMessage = useCallback(
-    (
+    async (
       senderId: number,
       message: string,
       receiverId: number,
@@ -131,13 +136,16 @@ const ChatScreen: React.FC = () => {
       attachmentId: number,
     ) => {
       const newMessage: IMessage = {
-        _id: messageId,
+        _id: uuidv4(),
         text: message,
         createdAt: Date.now(),
         user: { _id: receiverData.id, name: receiverData.name },
       };
       if (attachmentId) {
-        newMessage.image = `${SOCKET_URL}/attachments/${attachmentId}`;
+        const attachmentResponse = await getImageById(attachmentId);
+        if (attachmentResponse) {
+          newMessage.image = attachmentResponse;
+        }
       }
       setMessages((prevMessages) => GiftedChat.append(prevMessages, [newMessage]));
     },
@@ -175,7 +183,7 @@ const ChatScreen: React.FC = () => {
         renderComposer={(composerProps) => (
           <View style={styles.composerContainer}>
             <TouchableOpacity onPress={pickAndUploadImage} style={styles.imageButton}>
-              <IconSymbol size={24} name="image" color="#000" />
+              <MaterialCommunityIcons name="paperclip" size={24} color="black" />
             </TouchableOpacity>
             <Composer
               {...composerProps}

@@ -1,26 +1,42 @@
 import CreateGroup from '@/app/GroupStack/CreateGroup';
-import { useUser } from '@/components/UserContext'; // Assuming you have user context
+import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatConversationType, Group } from '@/constants/Types'; // Assuming you have a Group type
+import { ChatConversationType, Group } from '@/constants/Types';
 import { getGroupsListByUserId, getLastChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 
 const GroupListScreen = () => {
-  const { user } = useUser(); // Access user from context
+  const { user } = useUser();
   const connection = useSignalR(SOCKET_URL);
   const [groupsList, setGroupsList] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
   const [groupLastMessageList, setGroupLastMessageList] = useState<ChatConversationType[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getGroupList();
-    userLastChatMessage();
+    fetchData();
   }, [isDialogVisible]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    await Promise.all([getGroupList(), userLastChatMessage()]);
+    setIsLoading(false);
+  };
 
   const userLastChatMessage = async () => {
     const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.id!);
@@ -40,6 +56,12 @@ const GroupListScreen = () => {
 
   const handleCreateGroup = () => {
     setIsDialogVisible(true);
+  };
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchData();
+    setIsRefreshing(false);
   };
 
   const renderGroup = ({ item }: { item: Group }) => {
@@ -73,6 +95,14 @@ const GroupListScreen = () => {
     );
   };
 
+  if (isLoading && !isRefreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0066CC" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Search Bar */}
@@ -83,19 +113,26 @@ const GroupListScreen = () => {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-        {/* Create Group Button */}
         <TouchableOpacity onPress={handleCreateGroup} style={styles.createButton}>
           <Text style={styles.createButtonText}>Create Group</Text>
         </TouchableOpacity>
       </View>
 
-      {/* FlatList to show filtered groups */}
+      {/* FlatList with RefreshControl */}
       <FlatList
         data={filteredGroupsList}
         renderItem={renderGroup}
         keyExtractor={(item) => item?.groupName?.toString() || Math.random().toString()}
         contentContainerStyle={styles.scrollView}
         ListEmptyComponent={<Text style={styles.noGroupsText}>No groups found</Text>}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={['#0066CC']}
+            tintColor={'#0066CC'}
+          />
+        }
       />
 
       {isDialogVisible ? <CreateGroup setIsDialogVisible={setIsDialogVisible} /> : null}
@@ -155,32 +192,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    width: '80%',
-    padding: 20,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 5,
-  },
-  modalCloseButton: {
-    marginTop: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    backgroundColor: '#ff4444',
-    borderRadius: 8,
-  },
-  modalCloseText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
   message: {
     fontSize: 14,
     color: '#555',
@@ -195,6 +206,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#aaa',
     fontStyle: 'italic',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
   },
 });
 

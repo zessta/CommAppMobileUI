@@ -8,4 +8,5 @@ export const ENDPOINTS = {
   groupChatHistory: '/api/conversations/group/{groupId}/history',
   groupUsers: 'api/groups',
   uploadImage: 'api/attachments/upload',
+  getImage: 'api/attachments/{id}/download',
 };
