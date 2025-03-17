@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
-import { GiftedChat, IMessage } from 'react-native-gifted-chat';
+import { Bubble, GiftedChat, IMessage } from 'react-native-gifted-chat';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { v4 as uuidv4 } from 'uuid';
 import { useUser } from '@/components/UserContext';
@@ -8,10 +8,29 @@ import { useSignalR } from '@/services/signalRService';
 import { getGroupChatHistory, getGroupUsers } from '@/services/api/auth';
 import { SOCKET_URL } from '@/constants/Strings';
 import { ChatMessageServer, Group, Participants } from '@/constants/Types';
+import SendTag from './SendTag';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import Translator from 'react-native-translator';
 import AddMembersToGroup from './AddMemberToGroup';
 import Checkbox from 'expo-checkbox';
+
+export interface ICustomMessage extends IMessage {
+  pollOptions?: {
+    id: number;
+    option: string;
+    votes: number;
+  }[] | null | undefined;
+}
+
+export interface ITag {
+  description: string;
+  eventTagId: number;
+  name: string;
+  statuses: {
+    eventTagStatusId: number;
+    statusName: string;
+  }[];
+}
 
 // Custom Components
 const HeaderLeft = ({ onBack, groupName }: { onBack: () => void; groupName: string }) => (
@@ -28,9 +47,9 @@ const HeaderLeft = ({ onBack, groupName }: { onBack: () => void; groupName: stri
   </View>
 );
 
-const HeaderRight = ({ onAddMember }: { onAddMember: () => void }) => (
+const HeaderRight = ({ onAddMember, handleSendTag }: { onAddMember: () => void, handleSendTag: () => void }) => (
   <View style={styles.headerRight}>
-    <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
+    <TouchableOpacity onPress={handleSendTag} style={styles.headerIcon}>
       <IconSymbol size={28} name="poll" color={'#fff'} />
     </TouchableOpacity>
     <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
@@ -152,8 +171,9 @@ const GroupChatScreen: React.FC = () => {
   const { user } = useUser();
   const connection = useSignalR(SOCKET_URL);
 
-  const [messages, setMessages] = useState<IMessage[]>([]);
+  const [messages, setMessages] = useState<ICustomMessage[]>([]);
   const [isDialogVisible, setIsDialogVisible] = useState(false);
+  const [isTagDialogVisible, setIsTagDialogVisible] = useState<boolean>(false);
   const [groupUsers, setGroupUsers] = useState<Participants[]>([]);
   const [enteredText, setEnteredText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
@@ -223,9 +243,43 @@ const GroupChatScreen: React.FC = () => {
     };
   }, [connection, fetchGroupData]);
 
+  //send tag message
+  const onSendTagMessage = (tag?: ITag, message?: string) => {
+    if(!tag) {
+      alert('Please select a Tag');
+      return;
+    }
+    if(!message || message?.trim() === '') {
+      alert('Please enter a message');
+      return;
+    }
+    //setting options for selecting poll
+    const pollOptions = tag.statuses.map((status) => {
+      const poll = {
+        id: status.eventTagStatusId,
+        option: status.statusName,
+        votes: 0,
+      }
+      return poll;
+    })
+    const tagMessage: ICustomMessage = {
+      _id: uuidv4(),
+      text: message,
+      createdAt: new Date().getTime(), 
+      pollOptions: pollOptions,
+      user: {
+        _id: 105,
+        // name: groupUsers.find((user) => user.userId === 105)?.userName,
+      },
+    }
+    setMessages((prevMessages) => GiftedChat.append(prevMessages, [tagMessage]));
+    setIsTagDialogVisible(false);
+  }
+
+
   // Send message via SignalR
   const onSend = useCallback(
-    async (newMessages: IMessage[] = []) => {
+    async (newMessages: ICustomMessage[] = []) => {
       if (!newMessages.length || !connection || connection.state !== 'Connected') return;
       const message = newMessages[0];
       try {
@@ -262,6 +316,47 @@ const GroupChatScreen: React.FC = () => {
     });
   }, [selectedGroup, groupUsers]);
 
+  const handleVote = (messageId: number, optionId: number) => {
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) => {
+        if (msg._id === messageId && msg.pollOptions) {
+          return {
+            ...msg,
+            pollOptions: msg.pollOptions.map((opt) =>
+              opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
+            ),
+          };
+        }
+        return msg;
+      })
+    );
+  };
+
+  // Custom render for poll messages
+  const renderCustomMessage = (props) => {
+    const { currentMessage } = props;
+    if (currentMessage.pollOptions) {
+      return (
+        <View style={styles.pollContainer}>
+          <Text style={styles.pollQuestion}>{currentMessage.text}</Text>
+          {currentMessage.pollOptions.map((option : any) => (
+            <TouchableOpacity
+              key={option.id}
+              style={styles.pollOption}
+              onPress={() => handleVote(currentMessage._id, option.id)}
+            >
+              <Text style={styles.optionText}>
+                {option.option} - ({option.votes})
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    }
+    return <Bubble {...props} />;
+  };
+
+
   return (
     <View style={styles.container}>
       <Stack.Screen
@@ -276,7 +371,7 @@ const GroupChatScreen: React.FC = () => {
               onPress={navigateToGroupDetails}
             />
           ),
-          headerRight: () => <HeaderRight onAddMember={() => setIsDialogVisible(true)} />,
+          headerRight: () => <HeaderRight onAddMember={() => setIsDialogVisible(true)} handleSendTag={() => setIsTagDialogVisible(true)} />,
         }}
       />
       {isDialogVisible ? (
@@ -284,6 +379,11 @@ const GroupChatScreen: React.FC = () => {
           setIsDialogVisible={setIsDialogVisible}
           selectedGroup={selectedGroup}
           groupUserList={groupUsers}
+        />
+      ) : isTagDialogVisible ? (
+        <SendTag
+          onSendTagMessage={onSendTagMessage}
+          setIsTagDialogVisible={setIsTagDialogVisible}
         />
       ) : (
         <View style={styles.chatContainer}>
@@ -300,6 +400,7 @@ const GroupChatScreen: React.FC = () => {
             text={enteredText}
             placeholder="Type a message..."
             // inverted
+            renderMessage={renderCustomMessage}
             renderBubble={(props) => (
               <View
                 style={[
@@ -371,6 +472,28 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     margin: 10,
   },
+  pollContainer: {
+    backgroundColor: "#f1f1f1",
+    padding: 10,
+    borderRadius: 8,
+    marginVertical: 5,
+  },
+  pollQuestion: {
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  pollOption: {
+    backgroundColor: 'white',
+    color: 'black',
+    padding: 8,
+    marginVertical: 3,
+    borderRadius: 5,
+  },
+  optionText: {
+    color: "black",
+    textAlign: "center",
+  },
+
   acceptText: { color: '#FFF', fontWeight: '600' },
   bubble: { borderRadius: 15, padding: 10, marginVertical: 5, maxWidth: '75%' },
   bubbleText: { fontSize: 16 },

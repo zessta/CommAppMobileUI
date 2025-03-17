@@ -30,7 +30,6 @@ const GroupListScreen = () => {
 
   const getGroupList = async () => {
     const groupsListData: Group[] = await getGroupsListByUserId(user?.id!);
-    console.log('groupsListData', groupsListData);
     setGroupsList(groupsListData);
   };
 
