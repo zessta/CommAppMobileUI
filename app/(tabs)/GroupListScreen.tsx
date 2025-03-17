@@ -1,23 +1,68 @@
-import CreateGroup from '@/app/GroupStack/CreateGroup';
-import { useUser } from '@/components/UserContext';
-import { SOCKET_URL } from '@/constants/Strings';
-import { ChatConversationType, Group } from '@/constants/Types';
-import { getGroupsListByUserId, getLastChatHistory } from '@/services/api/auth';
-import { useSignalR } from '@/services/signalRService';
-import { formattedTimeString } from '@/Utils/utils';
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  BackHandler,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useUser } from '@/components/UserContext';
+import { SOCKET_URL } from '@/constants/Strings';
+import { ChatConversationType, Group } from '@/constants/Types';
+import { getGroupsListByUserId, getLastChatHistory } from '@/services/api/auth';
+import { useSignalR } from '@/services/signalRService';
+import { formattedTimeString } from '@/Utils/utils';
+import { router, useFocusEffect } from 'expo-router';
+import CreateGroup from '@/app/GroupStack/CreateGroup';
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 
+// Interface for group item props
+interface GroupItemProps {
+  item: Group;
+  onPress: () => void;
+  groupLastMessageList: ChatConversationType[];
+  user: any; // Replace 'any' with the actual user type if available
+}
+
+// Group Item Component
+const GroupItem: React.FC<GroupItemProps> = ({ item, onPress, groupLastMessageList, user }) => {
+  const groupLastMessage = groupLastMessageList.find(
+    (groupList) => groupList.groupId === item.groupId,
+  );
+
+  return (
+    <TouchableOpacity style={styles.chatItem} onPress={onPress}>
+      <View style={styles.avatarContainer}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>G</Text>
+        </View>
+      </View>
+      <View style={styles.textContainer}>
+        <Text style={styles.groupName}>{item.groupName}</Text>
+        {groupLastMessage?.lastMessage ? (
+          <Text style={styles.messageText}>
+            {groupLastMessage?.lastMessageSenderId === user?.id
+              ? 'You'
+              : groupLastMessage?.lastMessageSenderName}
+            : {groupLastMessage?.lastMessage}
+          </Text>
+        ) : (
+          <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
+        )}
+      </View>
+      {groupLastMessage?.lastMessageTime ? (
+        <Text style={styles.timeText}>{formattedTimeString(groupLastMessage.lastMessageTime)}</Text>
+      ) : null}
+    </TouchableOpacity>
+  );
+};
+
+// Main Component
 const GroupListScreen = () => {
   const { user } = useUser();
   const connection = useSignalR(SOCKET_URL);
@@ -27,15 +72,21 @@ const GroupListScreen = () => {
   const [groupLastMessageList, setGroupLastMessageList] = useState<ChatConversationType[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
 
   useEffect(() => {
     fetchData();
-  }, [isDialogVisible]);
+  }, []);
 
   const fetchData = async () => {
     setIsLoading(true);
-    await Promise.all([getGroupList(), userLastChatMessage()]);
-    setIsLoading(false);
+    try {
+      await Promise.all([getGroupList(), userLastChatMessage()]);
+    } catch (error) {
+      console.error('Error fetching group data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const userLastChatMessage = async () => {
@@ -46,7 +97,6 @@ const GroupListScreen = () => {
 
   const getGroupList = async () => {
     const groupsListData: Group[] = await getGroupsListByUserId(user?.id!);
-    console.log('groupsListData', groupsListData);
     setGroupsList(groupsListData);
   };
 
@@ -64,78 +114,104 @@ const GroupListScreen = () => {
     setIsRefreshing(false);
   };
 
-  const renderGroup = ({ item }: { item: Group }) => {
-    const groupLastMessage = groupLastMessageList.find(
-      (groupList) => groupList.groupId === item.groupId,
-    );
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() =>
-          router.push({
-            pathname: '/GroupStack/GroupChatScreen',
-            params: { selectedGroup: JSON.stringify(item) },
-          })
-        }>
-        <Text style={styles.groupName}>{item.groupName}</Text>
-        {groupLastMessage?.lastMessage ? (
-          <Text style={styles.message}>
-            {groupLastMessage?.lastMessageSenderId === user?.id
-              ? 'You'
-              : groupLastMessage?.lastMessageSenderName}
-            : {groupLastMessage?.lastMessage}
-          </Text>
-        ) : (
-          <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
-        )}
-        {groupLastMessage?.lastMessageTime ? (
-          <Text style={styles.time}>{formattedTimeString(groupLastMessage?.lastMessageTime!)}</Text>
-        ) : null}
-      </TouchableOpacity>
-    );
+  const handleBackPress = () => {
+    router.back();
   };
 
-  if (isLoading && !isRefreshing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0066CC" />
-      </View>
-    );
-  }
+  const toggleSearchBar = () => {
+    setIsSearchVisible(!isSearchVisible);
+    setSearchQuery('');
+  };
+
+  const handleMenuPress = () => {
+    Alert.alert('Menu', 'Menu options will appear here', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Option 1', onPress: () => console.log('Option 1 selected') },
+      { text: 'Option 2', onPress: () => console.log('Option 2 selected') },
+    ]);
+  };
 
   return (
     <View style={styles.container}>
-      {/* Search Bar */}
-      <View style={styles.searchBarContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search Groups"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        <TouchableOpacity onPress={handleCreateGroup} style={styles.createButton}>
-          <Text style={styles.createButtonText}>Create Group</Text>
-        </TouchableOpacity>
+      {/* Header Section */}
+      <View style={styles.header}>
+        {isSearchVisible ? (
+          // <Animated.View entering={FadeIn} exiting={FadeOut}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#A08E67" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchBar}
+              placeholder="Search Groups"
+              placeholderTextColor="#888"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoFocus={true}
+            />
+            <TouchableOpacity onPress={toggleSearchBar}>
+              <Ionicons name="close" size={20} color="#A08E67" style={styles.clearIcon} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // </Animated.View>
+          <>
+            <TouchableOpacity onPress={handleBackPress}>
+              <Ionicons name="arrow-back" size={24} color="#A08E67" style={styles.backIcon} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Group Chats</Text>
+            <View style={styles.iconContainer}>
+              <TouchableOpacity onPress={handleCreateGroup}>
+                <MaterialIcons name="group-add" size={24} color="#A08E67" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={toggleSearchBar}>
+                <Ionicons name="search" size={24} color="#A08E67" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleMenuPress}>
+                <Ionicons name="ellipsis-vertical" size={24} color="#A08E67" />
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
 
-      {/* FlatList with RefreshControl */}
-      <FlatList
-        data={filteredGroupsList}
-        renderItem={renderGroup}
-        keyExtractor={(item) => item?.groupName?.toString() || Math.random().toString()}
-        contentContainerStyle={styles.scrollView}
-        ListEmptyComponent={<Text style={styles.noGroupsText}>No groups found</Text>}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            colors={['#0066CC']}
-            tintColor={'#0066CC'}
-          />
-        }
-      />
+      {/* White Container for FlatList */}
+      <View style={styles.listContainer}>
+        {isLoading && !isRefreshing ? (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loaderText}>Loading groups...</Text>
+          </View>
+        ) : null}
+        <FlatList
+          data={filteredGroupsList}
+          renderItem={({ item }) => (
+            <Animated.View entering={FadeIn} exiting={FadeOut}>
+              <GroupItem
+                item={item}
+                onPress={() =>
+                  router.push({
+                    pathname: '/GroupStack/GroupChatScreen',
+                    params: { selectedGroup: JSON.stringify(item) },
+                  })
+                }
+                groupLastMessageList={groupLastMessageList}
+                user={user}
+              />
+            </Animated.View>
+          )}
+          keyExtractor={(item) => item.groupId?.toString() || Math.random().toString()}
+          ListEmptyComponent={
+            !isLoading ? <Text style={styles.noGroupsText}>No groups found</Text> : null
+          }
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+        />
+      </View>
 
-      {isDialogVisible ? <CreateGroup setIsDialogVisible={setIsDialogVisible} /> : null}
+      {isDialogVisible ? (
+        // <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.dialogContainer}>
+        <CreateGroup setIsDialogVisible={setIsDialogVisible} />
+      ) : // </Animated.View>
+      null}
     </View>
   );
 };
@@ -143,75 +219,131 @@ const GroupListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#f5f7fe',
   },
-  searchBarContainer: {
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
+  },
+  backIcon: {
+    marginRight: 10,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+    fontFamily: 'Poppins',
+    flex: 1,
+  },
+  searchContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    backgroundColor: '#F6F8FE',
+    borderRadius: 8,
+    // marginHorizontal: 10,
   },
-  searchInput: {
-    height: 40,
+  searchIcon: {
+    marginLeft: 10,
+    marginRight: 5,
+  },
+  clearIcon: {
+    marginRight: 10,
+  },
+  searchBar: {
     flex: 1,
-    paddingLeft: 10,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
+    fontSize: 16,
+    color: '#000',
+    paddingVertical: 8,
+    backgroundColor: 'transparent',
   },
-  createButton: {
-    marginLeft: 16,
-    backgroundColor: '#0066CC',
+  iconContainer: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  listContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    margin: 10,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  chatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingHorizontal: 15,
   },
-  createButtonText: {
+  avatarContainer: {
+    marginRight: 10,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#d4af37', // Gold color from the image
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
     color: '#fff',
-    fontWeight: 'bold',
-  },
-  scrollView: {
-    flexGrow: 1,
-  },
-  card: {
-    padding: 16,
-    backgroundColor: '#ffffff',
-    marginBottom: 10,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  groupName: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  textContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  groupName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  messageText: {
+    fontSize: 14,
+    color: '#555',
+    marginVertical: 2,
+  },
+  timeText: {
+    fontSize: 12,
+    color: '#A08E67',
+    textAlign: 'right',
+  },
+  placeholderText: {
+    fontSize: 14,
+    color: '#555',
+    marginVertical: 2,
   },
   noGroupsText: {
     textAlign: 'center',
     fontSize: 16,
     color: '#999',
+    paddingVertical: 20,
   },
-  message: {
-    fontSize: 14,
-    color: '#555',
-    marginVertical: 5,
-  },
-  time: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'right',
-  },
-  placeholderText: {
-    fontSize: 16,
-    color: '#aaa',
-    fontStyle: 'italic',
-  },
-  loadingContainer: {
+  loaderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
+  },
+  loaderText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#007AFF',
+  },
+  dialogContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Optional: Add a semi-transparent overlay
   },
 });
 

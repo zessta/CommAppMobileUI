@@ -1,14 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Group, Participants } from '@/constants/Types';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 // Define props interface
-interface GroupDetailsSearchParams {
+type GroupDetailsSearchParams = {
   group: string;
   groupUsers: string;
-}
+};
 
 const GroupDetailsScreen: React.FC = () => {
   const { group: groupString, groupUsers: groupUsersString } =
@@ -17,67 +18,36 @@ const GroupDetailsScreen: React.FC = () => {
   const groupInfo: Group = JSON.parse(groupString || '{}');
   const groupUserList: Participants[] = JSON.parse(groupUsersString || '[]');
 
-  // Animated values for transitions
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(-100)).current;
-
-  // Animation on mount
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, slideAnim]);
-  const itemFadeAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(itemFadeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  }, [itemFadeAnim]);
-
   // Handle leave group (simulated action)
   const handleLeaveGroup = () => {
     console.log('Leaving group:', groupInfo.groupId);
     router.back();
   };
 
+  const handleBackPress = () => {
+    router.back();
+  };
+
   // Render individual member item with animation
-  const renderItem = ({ item, index }: { item: Participants; index: number }) => {
+  const renderItem = ({ item }: { item: Participants }) => {
     return (
-      <Animated.View
-        style={[
-          styles.memberItem,
-          {
-            opacity: itemFadeAnim,
-            transform: [
-              {
-                translateY: itemFadeAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20, 0],
-                }),
-              },
-            ],
-          },
-        ]}>
-        <Image
-          source={{
-            uri: `https://ui-avatars.com/api/?background=1E88E5&color=FFF&name=${item.userName}`,
-          }}
-          style={styles.avatar}
-        />
-        <Text style={styles.memberName}>{item.userName}</Text>
-        <TouchableOpacity style={styles.removeButton}>
-          <Ionicons name="close-circle" size={20} color="#ff4444" />
+      <Animated.View entering={FadeIn} exiting={FadeOut}>
+        <TouchableOpacity style={styles.memberItem}>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={{
+                uri: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${item.userName}`,
+              }}
+              style={styles.avatar}
+            />
+          </View>
+          <View style={styles.textContainer}>
+            <Text style={styles.memberName}>{item.userName}</Text>
+            <Text style={styles.memberRole}>{item.role || 'Member'}</Text>
+          </View>
+          <TouchableOpacity style={styles.removeButton}>
+            <Ionicons name="close-circle" size={20} color="#FF0000" />
+          </TouchableOpacity>
         </TouchableOpacity>
       </Animated.View>
     );
@@ -85,42 +55,26 @@ const GroupDetailsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.header,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
+      {/* Custom Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBackPress}>
+          <Ionicons name="arrow-back" size={24} color="#A08E67" style={styles.backIcon} />
         </TouchableOpacity>
-        <Animated.Text
-          style={[
-            styles.headerTitle,
-            {
-              opacity: fadeAnim,
-            },
-          ]}>
-          {groupInfo.groupName}
-        </Animated.Text>
-        <TouchableOpacity onPress={handleLeaveGroup} style={styles.leaveButton}>
-          <Ionicons name="log-out" size={24} color="#000" />
-        </TouchableOpacity>
-      </Animated.View>
+        <Text style={styles.headerTitle}>{groupInfo.groupName || 'Group Details'}</Text>
+        {/* <TouchableOpacity onPress={handleLeaveGroup} style={styles.leaveButton}>
+          <Ionicons name="log-out" size={24} color="#A08E67" />
+        </TouchableOpacity> */}
+      </View>
 
-      <Animated.View
-        style={[
-          styles.content,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          },
-        ]}>
-        <Text style={styles.membersCount}>
-          Members: <Text style={styles.membersCountBold}>{groupUserList.length}</Text>
-        </Text>
+      {/* Content Section */}
+      <View style={styles.content}>
+        {groupUserList.length ? (
+          <Animated.View entering={FadeIn} exiting={FadeOut}>
+            <Text style={styles.membersCount}>
+              Members: <Text style={styles.membersCountBold}>{groupUserList.length}</Text>
+            </Text>
+          </Animated.View>
+        ) : null}
         <FlatList
           data={groupUserList}
           renderItem={renderItem}
@@ -128,7 +82,7 @@ const GroupDetailsScreen: React.FC = () => {
           contentContainerStyle={styles.membersList}
           ListEmptyComponent={<Text style={styles.emptyText}>No members available</Text>}
         />
-      </Animated.View>
+      </View>
     </View>
   );
 };
@@ -137,38 +91,34 @@ const GroupDetailsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fa', // Light gradient-like background
-    padding: 20,
+    backgroundColor: '#f5f7fe',
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 10,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
+  },
+  backIcon: {
+    marginRight: 10,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    flex: 1,
-  },
-  backButton: {
-    padding: 5,
+    color: '#000',
+    fontFamily: 'Poppins',
   },
   leaveButton: {
-    padding: 5,
+    marginLeft: 'auto', // Push the leave button to the right
   },
   content: {
     flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   membersCount: {
     fontSize: 18,
@@ -185,26 +135,37 @@ const styles = StyleSheet.create({
   memberItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     backgroundColor: '#fff',
     borderRadius: 10,
     marginBottom: 10,
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
-    elevation: 2,
+  },
+  avatarContainer: {
+    marginRight: 10,
   },
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 10,
+  },
+  textContainer: {
+    flex: 1,
   },
   memberName: {
     fontSize: 16,
-    color: '#333',
-    flex: 1,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  memberRole: {
+    fontSize: 14,
+    color: '#555',
+    marginVertical: 2,
   },
   removeButton: {
     padding: 5,
