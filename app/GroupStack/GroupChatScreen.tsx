@@ -1,3 +1,5 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
@@ -6,18 +8,17 @@ import { getGroupChatHistory, getGroupUsers } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import Checkbox from 'expo-checkbox';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Composer, GiftedChat, IMessage, InputToolbar, Send } from 'react-native-gifted-chat';
 import Translator from 'react-native-translator';
 import { v4 as uuidv4 } from 'uuid';
 import AddMembersToGroup from './AddMemberToGroup';
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 
 // Custom Components
 const HeaderLeft = ({ onBack, groupName }: { onBack: () => void; groupName: string }) => (
   <View style={styles.headerLeft}>
     <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-      <IconSymbol size={28} name="arrow-back" color={'#000'} />
+      <IconSymbol size={24} name="arrow-back" color="#A08E67" />
     </TouchableOpacity>
     <Image
       source={{
@@ -31,10 +32,10 @@ const HeaderLeft = ({ onBack, groupName }: { onBack: () => void; groupName: stri
 const HeaderRight = ({ onAddMember }: { onAddMember: () => void }) => (
   <View style={styles.headerRight}>
     <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
-      <IconSymbol size={28} name="poll" color={'#000'} />
+      <IconSymbol size={24} name="poll" color="#A08E67" />
     </TouchableOpacity>
     <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
-      <IconSymbol size={28} name="adduser" color={'#000'} />
+      <IconSymbol size={24} name="adduser" color="#A08E67" />
     </TouchableOpacity>
   </View>
 );
@@ -46,9 +47,11 @@ const HeaderTitle = ({ title, onPress }: { title: string; onPress: () => void })
 );
 
 const Placeholder = () => (
-  <View style={styles.placeholderContainer}>
-    <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
-  </View>
+  <Animated.View entering={FadeIn} exiting={FadeOut}>
+    <View style={styles.placeholderContainer}>
+      <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
+    </View>
+  </Animated.View>
 );
 
 const TranslateBar = ({
@@ -103,40 +106,45 @@ const TranslateBar = ({
   }, [enteredText, result, onTranslate, setTranslatedText]);
 
   return (
-    <View style={styles.translateContainer}>
-      {languageList.map((lang) => (
-        <View style={styles.checkboxRow} key={lang.value}>
-          <Checkbox
-            value={lang.value === 'te' ? isTeluguChecked : isHindiChecked}
-            onValueChange={() => handleLangChange(lang.value)}
-            style={styles.checkbox}
+    <Animated.View entering={FadeIn} exiting={FadeOut}>
+      <View style={styles.translateContainer}>
+        {languageList.map((lang) => (
+          <View style={styles.checkboxRow} key={lang.value}>
+            <Checkbox
+              value={lang.value === 'te' ? isTeluguChecked : isHindiChecked}
+              onValueChange={() => handleLangChange(lang.value)}
+              style={styles.checkbox}
+              color={isTeluguChecked || isHindiChecked ? '#234B89' : undefined}
+            />
+            <Text style={styles.checkboxText}>{lang.title}</Text>
+          </View>
+        ))}
+        <TouchableOpacity style={styles.translateButton} onPress={handleTranslateButtonPress}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.translateText}>Translate</Text>
+          )}
+        </TouchableOpacity>
+        {enteredText && (
+          <Translator
+            from="en"
+            to={transLang}
+            value={enteredText}
+            onTranslated={(t) => setResult(t)}
           />
-          <Text style={styles.checkboxText}>{lang.title}</Text>
-        </View>
-      ))}
-      <TouchableOpacity style={styles.translateButton} onPress={handleTranslateButtonPress}>
-        {loading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text style={styles.translateText}>Translate</Text>
         )}
-      </TouchableOpacity>
-      {enteredText && (
-        <Translator
-          from="en"
-          to={transLang}
-          value={enteredText}
-          onTranslated={(t) => setResult(t)}
-        />
-      )}
-    </View>
+      </View>
+    </Animated.View>
   );
 };
 
 const AcceptButton = ({ onAccept }: { onAccept: () => void }) => (
-  <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
-    <Text style={styles.acceptText}>Accept</Text>
-  </TouchableOpacity>
+  <Animated.View entering={FadeIn} exiting={FadeOut}>
+    <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
+      <Text style={styles.acceptText}>Accept</Text>
+    </TouchableOpacity>
+  </Animated.View>
 );
 
 // Main Component
@@ -172,14 +180,14 @@ const GroupChatScreen: React.FC = () => {
         user: {
           _id: chat.senderId,
           name: users.find((u) => u.userId === chat.senderId)?.userName || 'Unknown',
-          avatar: `https://ui-avatars.com/api/?background=1E88E5&color=FFF&name=${users.find((u) => u.userId === chat.senderId)?.userName || 'User'}`,
+          avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${users.find((u) => u.userId === chat.senderId)?.userName || 'User'}`,
         },
       }));
       setMessages(formattedMessages);
     } catch (error) {
       console.error('Error fetching group data:', error);
     }
-  }, []);
+  }, [selectedGroup?.groupId]);
 
   useEffect(() => {
     if (!connection) return;
@@ -199,7 +207,7 @@ const GroupChatScreen: React.FC = () => {
             user: {
               _id: senderId,
               name: groupUsers.find((u) => u.userId === senderId)?.userName || 'Unknown',
-              avatar: `https://ui-avatars.com/api/?background=1E88E5&color=FFF&name=${groupUsers.find((u) => u.userId === senderId)?.userName || 'User'}`,
+              avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${groupUsers.find((u) => u.userId === senderId)?.userName || 'User'}`,
             },
           },
         ]),
@@ -207,9 +215,8 @@ const GroupChatScreen: React.FC = () => {
     };
 
     const handleMemberAdded = (groupId: number, newMember: string) => {
-      console.log('GroupMemberAdded:', groupId, newMember);
       if (selectedGroup?.groupId === groupId) {
-        fetchGroupData(); // Refresh only if it's the current group
+        fetchGroupData();
       }
     };
 
@@ -221,7 +228,7 @@ const GroupChatScreen: React.FC = () => {
       connection.off('ReceiveGroupMessage', handleReceiveMessage);
       connection.off('GroupMemberAdded', handleMemberAdded);
     };
-  }, [connection, fetchGroupData]);
+  }, [connection, fetchGroupData, selectedGroup?.groupId, groupUsers]);
 
   const onSend = useCallback(
     async (newMessages: IMessage[] = []) => {
@@ -260,34 +267,46 @@ const GroupChatScreen: React.FC = () => {
 
   const renderMessage = (props: any) => {
     const { currentMessage } = props;
+    const isCurrentUser = currentMessage.user._id === user?.id;
+
     return (
-      <View style={styles.messageContainer}>
-        <Text style={styles.senderName}>{currentMessage.user.name}</Text>
+      <Animated.View entering={FadeIn} exiting={FadeOut}>
         <View
           style={[
-            styles.bubble,
-            { backgroundColor: currentMessage.user._id === user?.id ? '#1E88E5' : '#E0E0E0' },
+            styles.messageContainer,
+            isCurrentUser ? styles.messageContainerRight : styles.messageContainerLeft,
           ]}>
-          <Text
-            style={[
-              styles.bubbleText,
-              { color: currentMessage.user._id === user?.id ? '#FFF' : '#333' },
-            ]}>
-            {currentMessage.text}
-          </Text>
+          {!isCurrentUser && (
+            <Image source={{ uri: currentMessage.user.avatar }} style={styles.messageAvatar} />
+          )}
+          <View style={styles.messageContent}>
+            <Text style={styles.senderName}>{currentMessage.user.name}</Text>
+            <View style={[styles.bubble, isCurrentUser ? styles.bubbleRight : styles.bubbleLeft]}>
+              <Text style={[styles.bubbleText, { color: isCurrentUser ? '#FFF' : '#333' }]}>
+                {currentMessage.text}
+              </Text>
+            </View>
+            <Text style={styles.timestamp}>
+              {currentMessage.createdAt.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </Text>
+          </View>
+          {isCurrentUser && (
+            <Image source={{ uri: currentMessage.user.avatar }} style={styles.messageAvatar} />
+          )}
         </View>
-        <Text style={styles.timestamp}>
-          {currentMessage.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
-        <Image source={{ uri: currentMessage.user.avatar }} style={styles.messageAvatar} />
-      </View>
+      </Animated.View>
     );
   };
 
   const renderDay = (props: any) => (
-    <Text style={styles.dayLabel}>
-      {new Date(props.currentMessage.createdAt).toLocaleDateString('en-US', { weekday: 'long' })}
-    </Text>
+    <Animated.View entering={FadeIn} exiting={FadeOut}>
+      <Text style={styles.dayLabel}>
+        {new Date(props.currentMessage.createdAt).toLocaleDateString('en-US', { weekday: 'long' })}
+      </Text>
+    </Animated.View>
   );
 
   const renderInputToolbar = (props: React.ComponentProps<typeof InputToolbar>) => {
@@ -307,7 +326,7 @@ const GroupChatScreen: React.FC = () => {
         )}
         renderSend={(sendProps) => (
           <Send {...sendProps} containerStyle={styles.sendButton}>
-            <IconSymbol size={24} name="send" color="#1E88E5" />
+            <IconSymbol size={24} name="send" color="#A08E67" />
           </Send>
         )}
       />
@@ -318,6 +337,11 @@ const GroupChatScreen: React.FC = () => {
     <View style={styles.container}>
       <Stack.Screen
         options={{
+          headerStyle: {
+            backgroundColor: '#fff',
+            borderBottomWidth: 1,
+            borderBottomColor: '#f0f0f0',
+          },
           headerLeft: () => (
             <HeaderLeft onBack={() => router.back()} groupName={selectedGroup?.groupName || ''} />
           ),
@@ -327,24 +351,17 @@ const GroupChatScreen: React.FC = () => {
               onPress={navigateToGroupDetails}
             />
           ),
-          headerRight: () => (
-            <View style={styles.headerRight}>
-              <TouchableOpacity onPress={() => setIsDialogVisible(true)} style={styles.headerIcon}>
-                <IconSymbol size={28} name="poll" color={'#000'} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setIsDialogVisible(true)} style={styles.headerIcon}>
-                <IconSymbol size={28} name="adduser" color={'#000'} />
-              </TouchableOpacity>
-            </View>
-          ),
+          headerRight: () => <HeaderRight onAddMember={() => setIsDialogVisible(true)} />,
         }}
       />
       {isDialogVisible ? (
-        <AddMembersToGroup
-          setIsDialogVisible={setIsDialogVisible}
-          selectedGroup={selectedGroup || { groupId: 0, groupName: '' }} // Provide default value
-          groupUserList={groupUsers}
-        />
+        <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.dialogContainer}>
+          <AddMembersToGroup
+            setIsDialogVisible={setIsDialogVisible}
+            selectedGroup={selectedGroup || { groupId: 0, groupName: '' }}
+            groupUserList={groupUsers}
+          />
+        </Animated.View>
       ) : (
         <View style={styles.chatContainer}>
           <GiftedChat
@@ -353,15 +370,19 @@ const GroupChatScreen: React.FC = () => {
             user={{
               _id: Number(user?.id) || 0,
               name: user?.name || 'Unknown',
-              avatar: `https://ui-avatars.com/api/?background=1E88E5&color=FFF&name=${user?.name || 'User'}`,
+              avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.name || 'User'}`,
             }}
             renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
             onInputTextChanged={setEnteredText}
             text={enteredText}
             placeholder="Enter a message..."
-            // renderMessage={renderMessage}
-            // renderDay={renderDay}
+            renderMessage={renderMessage}
+            renderDay={renderDay}
             renderInputToolbar={renderInputToolbar}
+            inverted={true}
+            // listViewProps={{
+            //   contentContainerStyle: styles.chatListContent,
+            // }}
           />
           <TranslateBar
             onTranslate={handleTranslate}
@@ -377,33 +398,86 @@ const GroupChatScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
-  chatContainer: { flex: 1 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', marginLeft: 10 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', marginRight: 10 },
-  headerButton: { padding: 5 },
-  headerIcon: { padding: 5, marginLeft: 10 },
-  headerTitleContainer: { paddingVertical: 10 },
-  headerTitle: { fontSize: 20, fontWeight: '600', color: '#000' },
-  placeholderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  placeholderText: { fontSize: 16, color: '#757575', fontStyle: 'italic' },
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f7fe',
+  },
+  chatContainer: {
+    flex: 1,
+  },
+  chatListContent: {
+    padding: 10,
+    flexGrow: 1,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    // marginLeft: 10,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  headerButton: {
+    padding: 5,
+  },
+  headerIcon: {
+    padding: 5,
+    marginLeft: 10,
+  },
+  headerTitleContainer: {
+    paddingVertical: 10,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+    fontFamily: 'Poppins',
+  },
+  placeholderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontSize: 16,
+    color: '#757575',
+    fontStyle: 'italic',
+  },
   translateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
     backgroundColor: '#FFF',
     borderTopWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#f0f0f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   translateButton: {
-    backgroundColor: '#1E88E5',
+    backgroundColor: '#A08E67',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     marginRight: 10,
   },
-  translateText: { color: '#FFF', fontWeight: '600' },
-  translatedText: { marginLeft: 10, fontSize: 14, color: '#424242' },
+  translateText: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  translatedText: {
+    marginLeft: 10,
+    marginVertical: 5,
+    fontSize: 14,
+    color: '#424242',
+    backgroundColor: '#F6F8FE',
+    padding: 8,
+    borderRadius: 8,
+  },
   acceptButton: {
     backgroundColor: '#43A047',
     paddingVertical: 8,
@@ -411,13 +485,27 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignSelf: 'center',
     margin: 10,
+    elevation: 2,
   },
-  acceptText: { color: '#FFF', fontWeight: '600' },
+  acceptText: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
   messageContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     marginVertical: 5,
-    marginHorizontal: 10,
+  },
+  messageContainerLeft: {
+    justifyContent: 'flex-start',
+    marginRight: 50,
+  },
+  messageContainerRight: {
+    justifyContent: 'flex-end',
+    marginLeft: 50,
+  },
+  messageContent: {
+    flex: 1,
   },
   senderName: {
     fontSize: 12,
@@ -428,31 +516,47 @@ const styles = StyleSheet.create({
   bubble: {
     borderRadius: 15,
     padding: 10,
-    maxWidth: '70%',
-    marginRight: 10,
+    maxWidth: '100%',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  bubbleText: { fontSize: 16 },
+  bubbleLeft: {
+    backgroundColor: '#FFF',
+    borderBottomLeftRadius: 0,
+  },
+  bubbleRight: {
+    backgroundColor: '#234B89',
+    borderBottomRightRadius: 0,
+    alignSelf: 'flex-end',
+  },
+  bubbleText: {
+    fontSize: 16,
+  },
   timestamp: {
     fontSize: 12,
-    color: '#757575',
-    marginBottom: 5,
+    color: '#A08E67',
+    marginTop: 2,
     alignSelf: 'flex-end',
   },
   messageAvatar: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    marginLeft: 5,
+    marginHorizontal: 5,
   },
   dayLabel: {
     fontSize: 14,
-    color: '#757575',
+    color: '#FFF',
     textAlign: 'center',
     marginVertical: 10,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#A08E67',
     padding: 5,
     borderRadius: 10,
     alignSelf: 'center',
+    fontWeight: 'bold',
   },
   inputToolbar: {
     flexDirection: 'row',
@@ -460,35 +564,59 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: '#FFF',
     borderTopWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#f0f0f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   composerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  inputIcon: {
-    padding: 5,
-    marginRight: 10,
-  },
   input: {
     flex: 1,
     height: 40,
-    borderColor: '#E0E0E0',
+    borderColor: '#f0f0f0',
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 15,
     color: '#333',
+    backgroundColor: '#F6F8FE',
   },
   sendButton: {
     padding: 5,
     marginLeft: 10,
     justifyContent: 'center',
   },
-  avatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
-  checkboxRow: { flexDirection: 'row', alignItems: 'center', marginRight: 15 },
-  checkbox: { marginRight: 5 },
-  checkboxText: { fontSize: 16 },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  checkbox: {
+    marginRight: 5,
+  },
+  checkboxText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dialogContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
 });
 
 export default GroupChatScreen;

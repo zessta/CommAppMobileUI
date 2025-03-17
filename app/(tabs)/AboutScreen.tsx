@@ -1,11 +1,12 @@
 import { useUser } from '@/components/UserContext';
-import { useRouter } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 const AboutScreen = () => {
-  const router = useRouter();
   const { user, setUser } = useUser();
   const [userInfo, setUserInfo] = useState<any>(null);
 
@@ -27,52 +28,78 @@ const AboutScreen = () => {
     router.push('/LoginScreen');
   };
 
+  const handleBackPress = () => {
+    router.back();
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>My Profile</Text>
-      <View style={styles.profileContainer}>
-        <Image source={{ uri: 'https://via.placeholder.com/80' }} style={styles.profileImage} />
-        <View style={styles.profileText}>
-          <View style={styles.nameContainer}>
-            <Text style={styles.name}>Admin</Text>
-            <View style={styles.statusDot} />
-          </View>
-          <Text style={styles.description}>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit
-            interdum, elit.
-          </Text>
-        </View>
+      {/* Custom Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBackPress}>
+          <Ionicons name="arrow-back" size={24} color="#A08E67" style={styles.backIcon} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Profile</Text>
+        <View style={styles.iconContainer} />
       </View>
 
-      {/* About Section */}
-      <Text style={styles.sectionTitle}>About</Text>
-      <View style={styles.card}>
-        {userInfo ? (
-          <View style={styles.infoContainer}>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Name</Text>
-              <Text style={styles.value}>{userInfo.name || 'Admin'}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Email</Text>
-              <Text style={styles.value}>{userInfo.email || 'demo@demo.com'}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Location</Text>
-              <Text style={styles.value}>{userInfo.location || 'Test'}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Test</Text>
-              <Text style={styles.value}>{userInfo.test || ''}</Text>
+      {/* Content Section */}
+      <View style={styles.contentContainer}>
+        <Animated.View entering={FadeIn} exiting={FadeOut}>
+          <View style={styles.profileContainer}>
+            <Image
+              source={{
+                uri:
+                  userInfo?.avatar ||
+                  `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.name || 'Admin'}`,
+              }}
+              style={styles.profileImage}
+            />
+            <View style={styles.profileText}>
+              <View style={styles.nameContainer}>
+                <Text style={styles.name}>{userInfo?.name || 'Admin'}</Text>
+                <View style={styles.statusDot} />
+              </View>
+              <Text style={styles.description}>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et
+                velit interdum.
+              </Text>
             </View>
           </View>
-        ) : (
-          <ActivityIndicator size="small" color="#6B46C1" />
-        )}
+        </Animated.View>
+
+        {/* About Section */}
+        <Animated.View entering={FadeIn} exiting={FadeOut}>
+          <Text style={styles.sectionTitle}>About</Text>
+          <View style={styles.card}>
+            {userInfo ? (
+              <View style={styles.infoContainer}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Name</Text>
+                  <Text style={styles.value}>{userInfo.name || 'Admin'}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Email</Text>
+                  <Text style={styles.value}>{userInfo.email || 'demo@demo.com'}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.label}>Location</Text>
+                  <Text style={styles.value}>{userInfo.location || 'Test'}</Text>
+                </View>
+              </View>
+            ) : (
+              <ActivityIndicator size="small" color="#234B89" />
+            )}
+          </View>
+        </Animated.View>
       </View>
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
+
+      {/* Logout Button at Bottom */}
+      <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.logoutContainer}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };
@@ -80,51 +107,72 @@ const AboutScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
-    paddingHorizontal: 20,
-    paddingTop: 40,
+    backgroundColor: '#f5f7fe',
   },
   header: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 20,
-    textAlign: 'center',
+    flexDirection: 'row',
+    justifyContent: 'flex-start', // Align items to the left
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
+  },
+  backIcon: {
+    marginRight: 10,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+    fontFamily: 'Poppins',
+  },
+  iconContainer: {
+    flex: 1, // Take remaining space to push title closer to the back icon
+  },
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   profileContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     marginBottom: 20,
+    marginTop: 20,
   },
   profileImage: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    marginRight: 15,
+    marginBottom: 15,
   },
   profileText: {
-    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
   },
   nameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 5,
   },
   name: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: 'bold',
     color: '#333',
+    marginRight: 5,
   },
   statusDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#34C759', // Green dot
-    marginLeft: 5,
+    backgroundColor: '#34C759',
   },
   description: {
     fontSize: 14,
     color: '#666',
-    marginTop: 5,
+    lineHeight: 18,
   },
   sectionTitle: {
     fontSize: 18,
@@ -136,30 +184,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
     padding: 20,
+    marginBottom: 20,
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
-    elevation: 5,
-    marginBottom: 20,
   },
   infoContainer: {
     width: '100%',
   },
   infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     marginBottom: 15,
   },
   label: {
     fontSize: 14,
     color: '#666',
     fontWeight: '500',
+    marginBottom: 5,
   },
   value: {
     fontSize: 14,
     color: '#333',
     fontWeight: '400',
+  },
+  logoutContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   logoutButton: {
     backgroundColor: '#FF0000',
@@ -167,6 +218,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     width: '100%',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
   },
   logoutText: {
     color: '#FFFFFF',
