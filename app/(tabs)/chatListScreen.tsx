@@ -1,77 +1,71 @@
+import React, { useEffect, useState } from 'react';
+import {
+  BackHandler,
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Loader from '@/components/Loader'; // Assuming Loader is your loader component
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatConversationType, UserInfo } from '@/constants/Types';
+import { ChatConversationType } from '@/constants/Types';
 import { getLastChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
-export type ChatDataProps = {
-  id: number;
-  name: string;
-  time: string;
-  lastMessage: string;
-  connectionId?: string;
-};
-// Sample chat data
-export const chatData: ChatDataProps[] = [
-  {
-    id: 1,
-    name: 'Chrome',
-    time: '10:30 AM',
-    lastMessage: 'Hey! How are you?',
-    connectionId: 'I6yM7Wr8IFll3kcBKVXQWg',
-  },
-  {
-    id: 2,
-    name: 'Edge',
-    time: 'Yesterday',
-    lastMessage: "Let's catch up soon.",
-    connectionId: 'R-efzNHU894RGXYLoft9EA',
-  },
-  {
-    id: 3,
-    name: 'Incog',
-    time: 'Monday',
-    lastMessage: 'Did you check the document?',
-    connectionId: 'HdrHx-u-Ou4cHrb7R49h5g',
-  },
-  {
-    id: 6,
-    name: 'Test',
-    time: 'Sunday',
-    lastMessage: 'See you at the event!',
-    connectionId: 'R-efzNHU894RGXYLoft9EA',
-  },
-];
-
-type ChatScreenProps = {
-  userInputName: string;
-};
-
-export interface GroupInfo {
-  GroupId: number;
-  GroupName: string;
-  CreatorConnectionId: string;
-  Members: UserInfo[];
-}
 
 const ChatListScreen = () => {
   const [searchText, setSearchText] = useState('');
   const [userChatHistory, setUserChatHistory] = useState<ChatConversationType[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const connection = useSignalR(SOCKET_URL);
   const router = useRouter();
   const { user } = useUser(); // Access the user from context
 
   // Join chat when the connection is available
   useEffect(() => {
+    joinChat();
+
+    // Handle Android back button press
+    const backAction = () => {
+      Alert.alert('Exit App', 'Are you sure you want to exit the app?', [
+        {
+          text: 'No',
+          onPress: () => null,
+          style: 'cancel',
+        },
+        {
+          text: 'Yes',
+          onPress: () => {
+            BackHandler.exitApp();
+          },
+        },
+      ]);
+      return true; // Prevent default behavior (app exit)
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+    return () => {
+      backHandler.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     if (connection) {
-      joinChat();
+      newUserConnection();
     }
   }, [connection]);
+
+  const newUserConnection = async () => {
+    await connection!.invoke('NewUser', user?.name);
+  };
 
   // Filter chat data based on the search text
   const filteredChats = userChatHistory?.filter(
@@ -83,15 +77,17 @@ const ChatListScreen = () => {
   // Function to join chat and fetch groups
   const joinChat = async () => {
     try {
-      await connection!.invoke('NewUser', user?.name);
       const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.id!);
       const filterOutGroups = usersLastChatHistory.filter((chat) => chat.groupId === null);
       setUserChatHistory(filterOutGroups);
+      setLoading(false);
+      setRefreshing(false);
     } catch (error) {
       console.error('Error joining chat:', error);
+      setLoading(false);
+      setRefreshing(false);
     }
   };
-  console.log('filteredChats', filteredChats);
 
   const receiverDataObject = (item: ChatConversationType) => {
     return JSON.stringify({
@@ -101,6 +97,12 @@ const ChatListScreen = () => {
       lastMessage: item.lastMessage,
     });
   };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    joinChat();
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
@@ -119,6 +121,8 @@ const ChatListScreen = () => {
         )}
       </View>
 
+      {/* Show Loader if data is still being fetched */}
+      {loading ? <Loader loadingText="Loading chats..." /> : null}
       <FlatList
         data={filteredChats}
         keyExtractor={(item) => item.conversationId.toString()}
@@ -143,6 +147,9 @@ const ChatListScreen = () => {
             <Text style={styles.time}>{formattedTimeString(item.lastMessageTime)}</Text>
           </TouchableOpacity>
         )}
+        ListEmptyComponent={<Text style={styles.noContactsText}>No chat history found</Text>}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
       />
     </View>
   );
@@ -174,6 +181,17 @@ const styles = StyleSheet.create({
     color: '#000',
     paddingVertical: 8,
   },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
   chatBox: {
     backgroundColor: '#f5f5f5',
     padding: 15,
@@ -194,6 +212,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     textAlign: 'right',
+  },
+  noContactsText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#999',
   },
 });
 

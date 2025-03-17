@@ -4,8 +4,10 @@ import { Group, Participants, UserListType } from '@/constants/Types';
 import { getUserList } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import Checkbox from 'expo-checkbox';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import {
+  Animated,
   FlatList,
   Modal,
   SafeAreaView,
@@ -14,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { v4 as uuidv4 } from 'uuid';
 
 const AddMembersToGroup = ({
   setIsDialogVisible,
@@ -24,11 +27,12 @@ const AddMembersToGroup = ({
   selectedGroup: Group;
   groupUserList: Participants[];
 }) => {
-  console.log('coming insde addmemeber');
-  const { user } = useUser(); // Access the user from context
+  const { user } = useUser();
   const connection = useSignalR(SOCKET_URL);
   const [contactsList, setContactsList] = useState<UserListType[]>([]);
-  const [selectedContact, setSelectedContact] = useState<number | null>(null); // Track the selected contact ID
+  const [selectedContact, setSelectedContact] = useState<number | null>(null);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [scaleAnim] = useState(new Animated.Value(0.95));
 
   useEffect(() => {
     if (connection) {
@@ -39,82 +43,97 @@ const AddMembersToGroup = ({
       connection.on('AddedToGroup', (groupId: number, groupName: string) => {
         console.log('AddedToGroup:', groupId, groupName);
       });
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1, friction: 8, useNativeDriver: true }),
+      ]).start();
     }
   }, [connection]);
 
   const getContactsList = async () => {
     const getAllUsers: UserListType[] = await getUserList();
-    console.log('getAllUsers', getAllUsers);
     if (getAllUsers.length) {
-      console.log('groupUsers', groupUserList);
       const filteredUsers = getAllUsers.filter(
         (contact) => !groupUserList.some((groupUser) => groupUser.userId === contact.userId),
       );
-      console.log('filterOutUser', filteredUsers);
       setContactsList(filteredUsers);
     }
   };
 
   const toggleContactSelection = (contactId: number) => {
-    if (selectedContact === contactId) {
-      // If the same contact is clicked again, unselect it
-      setSelectedContact(null);
-    } else {
-      // Set the selected contact
-      setSelectedContact(contactId);
-    }
+    setSelectedContact(selectedContact === contactId ? null : contactId);
   };
 
   const addMemberToGroup = async () => {
-    if (!selectedContact) {
-      alert('Please select a member for the group');
-      return;
-    }
-    // Now invoke the 'AddMemberToGroup' method with the group name and selected connection IDs
+    if (!selectedContact) return alert('Please select a member to add');
     await connection!.invoke('AddMemberToGroup', selectedGroup.groupId, selectedContact);
-
     alert('Member added successfully');
-    setIsDialogVisible(false); // Close the modal after adding the member
+    setIsDialogVisible(false);
   };
-  console.log('contactsList', contactsList);
+
+  const closeModal = () => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 0.95, duration: 200, useNativeDriver: true }),
+    ]).start(() => setIsDialogVisible(false));
+  };
+
   return (
-    <Modal
-      visible={true}
-      animationType="slide"
-      transparent
-      onRequestClose={() => setIsDialogVisible(false)}>
+    <Modal visible={true} animationType="none" transparent onRequestClose={closeModal}>
       <SafeAreaView style={styles.modalContainer}>
-        <View style={styles.dialogContainer}>
-          <Text style={styles.dialogTitle}>Add Member to Group</Text>
+        <Animated.View
+          style={[
+            styles.dialogContainer,
+            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
+          ]}>
+          <LinearGradient
+            colors={['#ffffff', '#f7f9fc']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradientBackground}>
+            <Text style={styles.dialogTitle}>Add Member to Group</Text>
 
-          {/* Contacts List - Allowing users to select a member */}
-          <Text style={styles.label}>Select a Member</Text>
-          <FlatList
-            data={contactsList}
-            renderItem={({ item }) => (
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: '10px' }}>
-                <Checkbox
-                  value={selectedContact === item.userId}
-                  onValueChange={() => toggleContactSelection(item.userId)}
-                  style={styles.checkbox}
-                />
-                <Text style={styles.contactName}>{item.userName}</Text>
-              </View>
-            )}
-            keyExtractor={(item) => item.userId.toString()}
-            contentContainerStyle={styles.contactListContainer}
-          />
+            <Text style={styles.label}>Select a Member</Text>
+            <FlatList
+              data={contactsList}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.contactCard,
+                    selectedContact === item.userId && styles.selectedContact,
+                  ]}
+                  onPress={() => toggleContactSelection(item.userId)}>
+                  <Checkbox
+                    value={selectedContact === item.userId}
+                    onValueChange={() => toggleContactSelection(item.userId)}
+                    style={styles.checkbox}
+                    color={selectedContact === item.userId ? '#4a90e2' : '#ccc'}
+                  />
+                  <Text style={styles.contactName}>{item.userName}</Text>
+                </TouchableOpacity>
+              )}
+              keyExtractor={() => uuidv4()}
+              // contentContainerStyle={styles.contactListContainer}
+              style={styles.contactList} // Added style to limit height and enable scroll
+            />
 
-          {/* Buttons */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.addButton} onPress={addMemberToGroup}>
-              <Text style={styles.buttonText}>Add Member</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setIsDialogVisible(false)}>
-              <Text style={styles.buttonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+            {/* Buttons Container (Fixed at Bottom) */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity onPress={addMemberToGroup}>
+                <LinearGradient
+                  colors={['#4a90e2', '#357abd']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.addButton}>
+                  <Text style={styles.buttonText}>Add Member</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={closeModal} style={styles.cancelButton}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </Animated.View>
       </SafeAreaView>
     </Modal>
   );
@@ -125,73 +144,107 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent overlay
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   dialogContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
     width: '90%',
-    maxWidth: 400,
-    alignItems: 'stretch',
+    maxHeight: '80%', // Limits the overall dialog height
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  gradientBackground: {
+    padding: 20,
+    flex: 1, // Ensures the gradient background fills the container
   },
   dialogTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#2c3e50',
     marginBottom: 20,
-    textAlign: 'left',
+    letterSpacing: 0.5,
   },
   label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#34495e',
+    marginBottom: 15,
+  },
+  contactList: {
+    maxHeight: 300, // Fixed height for the FlatList to enable scrolling
+    marginBottom: 20, // Space before buttons
   },
   contactListContainer: {
-    marginBottom: 20,
+    paddingBottom: 10,
   },
   contactCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
-    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
     marginBottom: 10,
-    backgroundColor: '#f7f7f7',
-    borderColor: '#ddd',
     borderWidth: 1,
+    borderColor: '#e0e6e8',
   },
   selectedContact: {
-    backgroundColor: '#e0f7fa', // Highlight selected contact
+    backgroundColor: '#e8f4ff',
+    borderColor: '#4a90e2',
   },
   contactName: {
     fontSize: 16,
-    marginLeft: 10,
-    flex: 1, // Allow the name to take up the remaining space
+    color: '#2c3e50',
+    marginLeft: 15,
+    flex: 1,
   },
   checkbox: {
-    marginRight: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
   },
   addButton: {
-    backgroundColor: '#007bff',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 35,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelButton: {
-    backgroundColor: '#dc3545',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 35,
+    borderRadius: 12,
+    backgroundColor: '#ecf0f1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#bdc3c7',
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  cancelButtonText: {
+    color: '#7f8c8d',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });
 

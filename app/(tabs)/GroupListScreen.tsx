@@ -1,9 +1,10 @@
 import CreateGroup from '@/app/GroupStack/CreateGroup';
 import { useUser } from '@/components/UserContext'; // Assuming you have user context
 import { SOCKET_URL } from '@/constants/Strings';
-import { Group } from '@/constants/Types'; // Assuming you have a Group type
-import { getGroupsListByUserId } from '@/services/api/auth';
+import { ChatConversationType, Group } from '@/constants/Types'; // Assuming you have a Group type
+import { getGroupsListByUserId, getLastChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
+import { formattedTimeString } from '@/Utils/utils';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -14,10 +15,18 @@ const GroupListScreen = () => {
   const [groupsList, setGroupsList] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
+  const [groupLastMessageList, setGroupLastMessageList] = useState<ChatConversationType[]>([]);
 
   useEffect(() => {
     getGroupList();
+    userLastChatMessage();
   }, [isDialogVisible]);
+
+  const userLastChatMessage = async () => {
+    const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.id!);
+    const filteredGroups = usersLastChatHistory.filter((userList) => userList.groupId !== null);
+    setGroupLastMessageList(filteredGroups);
+  };
 
   const getGroupList = async () => {
     const groupsListData: Group[] = await getGroupsListByUserId(user?.id!);
@@ -32,18 +41,36 @@ const GroupListScreen = () => {
     setIsDialogVisible(true);
   };
 
-  const renderGroup = ({ item }: { item: Group }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() =>
-        router.push({
-          pathname: '/GroupStack/GroupChatScreen',
-          params: { selectedGroup: JSON.stringify(item) },
-        })
-      }>
-      <Text style={styles.groupName}>{item.groupName}</Text>
-    </TouchableOpacity>
-  );
+  const renderGroup = ({ item }: { item: Group }) => {
+    const groupLastMessage = groupLastMessageList.find(
+      (groupList) => groupList.groupId === item.groupId,
+    );
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() =>
+          router.push({
+            pathname: '/GroupStack/GroupChatScreen',
+            params: { selectedGroup: JSON.stringify(item) },
+          })
+        }>
+        <Text style={styles.groupName}>{item.groupName}</Text>
+        {groupLastMessage?.lastMessage ? (
+          <Text style={styles.message}>
+            {groupLastMessage?.lastMessageSenderId === user?.id
+              ? 'You'
+              : groupLastMessage?.lastMessageSenderName}
+            : {groupLastMessage?.lastMessage}
+          </Text>
+        ) : (
+          <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
+        )}
+        {groupLastMessage?.lastMessageTime ? (
+          <Text style={styles.time}>{formattedTimeString(groupLastMessage?.lastMessageTime!)}</Text>
+        ) : null}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -62,15 +89,13 @@ const GroupListScreen = () => {
       </View>
 
       {/* FlatList to show filtered groups */}
-      {filteredGroupsList?.length ? (
-        <FlatList
-          data={filteredGroupsList}
-          renderItem={renderGroup}
-          keyExtractor={(item) => item?.groupName?.toString() || Math.random().toString()}
-          contentContainerStyle={styles.scrollView}
-          ListEmptyComponent={<Text style={styles.noGroupsText}>No groups found</Text>}
-        />
-      ) : null}
+      <FlatList
+        data={filteredGroupsList}
+        renderItem={renderGroup}
+        keyExtractor={(item) => item?.groupName?.toString() || Math.random().toString()}
+        contentContainerStyle={styles.scrollView}
+        ListEmptyComponent={<Text style={styles.noGroupsText}>No groups found</Text>}
+      />
 
       {isDialogVisible ? <CreateGroup setIsDialogVisible={setIsDialogVisible} /> : null}
     </View>
@@ -154,6 +179,21 @@ const styles = StyleSheet.create({
   modalCloseText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  message: {
+    fontSize: 14,
+    color: '#555',
+    marginVertical: 5,
+  },
+  time: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'right',
+  },
+  placeholderText: {
+    fontSize: 16,
+    color: '#aaa',
+    fontStyle: 'italic',
   },
 });
 
