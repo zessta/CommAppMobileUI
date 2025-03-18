@@ -19,14 +19,14 @@ import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
 import { router, useFocusEffect } from 'expo-router';
 import CreateGroup from '@/app/GroupStack/CreateGroup';
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 // Interface for group item props
 interface GroupItemProps {
   item: Group;
   onPress: () => void;
   groupLastMessageList: ChatConversationType[];
-  user: UserDTO; // Replace 'any' with the actual user type if available
+  user: UserDTO;
 }
 
 // Group Item Component
@@ -74,9 +74,12 @@ const GroupListScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // Fetch data when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchData(); // Call fetchData when the screen is focused
+    }, []),
+  );
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -131,12 +134,30 @@ const GroupListScreen = () => {
     ]);
   };
 
+  const onGroupCreated = async (groupId: number, groupName: string) => {
+    // Fetch updated groups after a new group is created
+    console.log('groupId, groupName', groupId, groupName);
+    await fetchData();
+  };
+
+  // Ensure we subscribe to the GroupCreated event properly
+  useEffect(() => {
+    if (!connection) return;
+
+    connection.on('GroupCreated', onGroupCreated);
+
+    return () => {
+      if (connection) {
+        connection.off('GroupCreated', onGroupCreated); // Unsubscribe on cleanup
+      }
+    };
+  }, [connection]);
+
   return (
     <View style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
         {isSearchVisible ? (
-          // <Animated.View entering={FadeIn} exiting={FadeOut}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color="#A08E67" style={styles.searchIcon} />
             <TextInput
@@ -152,7 +173,6 @@ const GroupListScreen = () => {
             </TouchableOpacity>
           </View>
         ) : (
-          // </Animated.View>
           <>
             <TouchableOpacity onPress={handleBackPress}>
               <Ionicons name="arrow-back" size={24} color="#A08E67" style={styles.backIcon} />
@@ -207,11 +227,7 @@ const GroupListScreen = () => {
         />
       </View>
 
-      {isDialogVisible ? (
-        // <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.dialogContainer}>
-        <CreateGroup setIsDialogVisible={setIsDialogVisible} />
-      ) : // </Animated.View>
-      null}
+      {isDialogVisible ? <CreateGroup setIsDialogVisible={setIsDialogVisible} /> : null}
     </View>
   );
 };
@@ -247,7 +263,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F6F8FE',
     borderRadius: 8,
-    // marginHorizontal: 10,
   },
   searchIcon: {
     marginLeft: 10,

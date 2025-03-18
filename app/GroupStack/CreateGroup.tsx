@@ -62,8 +62,6 @@ const CreateGroup = ({
   const createNewGroup = async () => {
     if (!groupName.trim()) return alert('Please enter a group name');
     if (selectedContacts.length === 0) return alert('Please select at least one member');
-
-    selectedContacts.push(user?.userId!);
     await connection!.invoke('CreateGroup', groupName, selectedContacts);
     alert('Group created successfully');
     setIsDialogVisible(false);

@@ -216,7 +216,7 @@ const ChatScreen: React.FC = () => {
                   marginLeft: 10,
                 }}
                 onPress={() => router.back()}>
-                <IconSymbol size={28} name="arrow-back" color={'black'} />
+                <IconSymbol size={28} name="arrow-back" color={'#A08E67'} />
               </TouchableOpacity>
               <Image
                 source={{
