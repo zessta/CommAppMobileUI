@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '@/components/UserContext';
 import { ChatConversationType, UserDTO } from '@/constants/Types';
 import { getLastChatHistory, getUserList } from '@/services/api/auth';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 // Interface for contact item props
@@ -53,11 +53,7 @@ const ContactScreen = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const { user } = useUser();
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [users, chatHistory] = await Promise.all([
         getUserList(),
@@ -74,7 +70,14 @@ const ContactScreen = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchData(); // Call joinChat every time the screen is focused
+    }, [fetchData]),
+  );
+
   const filteredContacts = contactsList
     .filter((contact) => contact.fullName?.toLowerCase?.().includes(searchQuery.toLowerCase()))
     .sort((a, b) => a.fullName?.localeCompare?.(b.fullName));

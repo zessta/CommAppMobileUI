@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router'; // Import useFocusEffect from expo-router
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   BackHandler,
@@ -17,13 +18,13 @@ import { ChatConversationType, UserDTO } from '@/constants/Types';
 import { getLastChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 // Interface for chat item props
 interface ChatItemProps {
   item: ChatConversationType;
   onPress: () => void;
-  user: UserDTO; // Replace 'any' with the actual user type if available
+  user: UserDTO;
 }
 
 // Chat Item Component
@@ -57,9 +58,19 @@ const ChatListScreen = () => {
   const { user } = useUser();
 
   // Effect to join chat on mount
-  useEffect(() => {
-    joinChat();
-  }, []);
+  const joinChat = useCallback(async () => {
+    try {
+      const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.userId!);
+      const filterOutGroups = usersLastChatHistory.filter((chat) => chat.groupId === null);
+      setUserChatHistory(filterOutGroups);
+      setLoading(false);
+      setRefreshing(false);
+    } catch (error) {
+      console.error('Error joining chat:', error);
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.userId]);
 
   // Handle back button press
   useFocusEffect(
@@ -88,19 +99,12 @@ const ChatListScreen = () => {
     await connection!.invoke('NewUser', user?.fullName);
   };
 
-  const joinChat = async () => {
-    try {
-      const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.userId!);
-      const filterOutGroups = usersLastChatHistory.filter((chat) => chat.groupId === null);
-      setUserChatHistory(filterOutGroups);
-      setLoading(false);
-      setRefreshing(false);
-    } catch (error) {
-      console.error('Error joining chat:', error);
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  // Call joinChat function when the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      joinChat(); // Call joinChat every time the screen is focused
+    }, [joinChat]),
+  );
 
   const filteredChats = userChatHistory.filter(
     (chat) =>
