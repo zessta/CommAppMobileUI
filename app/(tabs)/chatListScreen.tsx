@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Loader from '@/components/Loader';
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatConversationType } from '@/constants/Types';
+import { ChatConversationType, UserDTO } from '@/constants/Types';
 import { getLastChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
@@ -23,7 +23,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 interface ChatItemProps {
   item: ChatConversationType;
   onPress: () => void;
-  user: any; // Replace 'any' with the actual user type if available
+  user: UserDTO; // Replace 'any' with the actual user type if available
 }
 
 // Chat Item Component
@@ -36,7 +36,7 @@ const ChatItem: React.FC<ChatItemProps> = ({ item, onPress, user }) => {
       <View style={styles.textContainer}>
         <Text style={styles.userName}>{item.participants[0].userName}</Text>
         <Text style={styles.messageText}>
-          {item.lastMessageSenderId === user?.id ? 'You' : item.lastMessageSenderName}:{' '}
+          {item.lastMessageSenderId === user?.userId ? 'You' : item.lastMessageSenderName}:{' '}
           {!item.lastMessage && item.conversationId ? 'Attachment' : item.lastMessage}
         </Text>
       </View>
@@ -85,12 +85,12 @@ const ChatListScreen = () => {
 
   // API and SignalR Methods
   const newUserConnection = async () => {
-    await connection!.invoke('NewUser', user?.name);
+    await connection!.invoke('NewUser', user?.fullName);
   };
 
   const joinChat = async () => {
     try {
-      const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.id!);
+      const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.userId!);
       const filterOutGroups = usersLastChatHistory.filter((chat) => chat.groupId === null);
       setUserChatHistory(filterOutGroups);
       setLoading(false);
@@ -184,7 +184,7 @@ const ChatListScreen = () => {
             data={filteredChats}
             keyExtractor={(item) => item.conversationId.toString()}
             renderItem={({ item }) => (
-              <ChatItem item={item} onPress={() => handleChatPress(item)} user={user} />
+              <ChatItem item={item} onPress={() => handleChatPress(item)} user={user!} />
             )}
             ListEmptyComponent={
               !loading ? <Text style={styles.noContactsText}>No chat history found</Text> : null

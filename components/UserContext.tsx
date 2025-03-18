@@ -1,4 +1,4 @@
-import { ChatDataProps } from '@/constants/Types';
+import { UserDTO } from '@/constants/Types';
 import React, { createContext, useContext, useState } from 'react';
 
 // Define the shape of the object you want to store in context
@@ -16,8 +16,8 @@ interface UserProviderProps {
 
 // Create the context with default value as null or empty object
 const UserContext = createContext<{
-  user: ChatDataProps | null;
-  setUser: React.Dispatch<React.SetStateAction<ChatDataProps | null>>;
+  user: UserDTO | null;
+  setUser: React.Dispatch<React.SetStateAction<UserDTO | null>>;
 }>({
   user: null,
   setUser: () => {},
@@ -25,7 +25,7 @@ const UserContext = createContext<{
 
 // Create the provider component
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<ChatDataProps | null>(null);
+  const [user, setUser] = useState<UserDTO | null>(null);
 
   return <UserContext.Provider value={{ user, setUser }}>{children}</UserContext.Provider>;
 };

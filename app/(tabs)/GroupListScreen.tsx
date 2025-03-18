@@ -13,7 +13,7 @@ import {
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatConversationType, Group } from '@/constants/Types';
+import { ChatConversationType, Group, UserDTO } from '@/constants/Types';
 import { getGroupsListByUserId, getLastChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
@@ -26,7 +26,7 @@ interface GroupItemProps {
   item: Group;
   onPress: () => void;
   groupLastMessageList: ChatConversationType[];
-  user: any; // Replace 'any' with the actual user type if available
+  user: UserDTO; // Replace 'any' with the actual user type if available
 }
 
 // Group Item Component
@@ -46,7 +46,7 @@ const GroupItem: React.FC<GroupItemProps> = ({ item, onPress, groupLastMessageLi
         <Text style={styles.groupName}>{item.groupName}</Text>
         {groupLastMessage?.lastMessage ? (
           <Text style={styles.messageText}>
-            {groupLastMessage?.lastMessageSenderId === user?.id
+            {groupLastMessage?.lastMessageSenderId === user?.userId
               ? 'You'
               : groupLastMessage?.lastMessageSenderName}
             : {groupLastMessage?.lastMessage}
@@ -90,13 +90,13 @@ const GroupListScreen = () => {
   };
 
   const userLastChatMessage = async () => {
-    const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.id!);
+    const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.userId!);
     const filteredGroups = usersLastChatHistory.filter((userList) => userList.groupId !== null);
     setGroupLastMessageList(filteredGroups);
   };
 
   const getGroupList = async () => {
-    const groupsListData: Group[] = await getGroupsListByUserId(user?.id!);
+    const groupsListData: Group[] = await getGroupsListByUserId(user?.userId!);
     setGroupsList(groupsListData);
   };
 
@@ -194,7 +194,7 @@ const GroupListScreen = () => {
                   })
                 }
                 groupLastMessageList={groupLastMessageList}
-                user={user}
+                user={user!}
               />
             </Animated.View>
           )}

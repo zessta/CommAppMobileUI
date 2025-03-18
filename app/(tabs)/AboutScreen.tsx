@@ -51,7 +51,7 @@ const AboutScreen = () => {
               source={{
                 uri:
                   userInfo?.avatar ||
-                  `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.name || 'Admin'}`,
+                  `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'Admin'}`,
               }}
               style={styles.profileImage}
             />
@@ -60,10 +60,10 @@ const AboutScreen = () => {
                 <Text style={styles.name}>{userInfo?.name || 'Admin'}</Text>
                 <View style={styles.statusDot} />
               </View>
-              <Text style={styles.description}>
+              {/* <Text style={styles.description}>
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et
                 velit interdum.
-              </Text>
+              </Text> */}
             </View>
           </View>
         </Animated.View>
@@ -84,7 +84,7 @@ const AboutScreen = () => {
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.label}>Location</Text>
-                  <Text style={styles.value}>{userInfo.location || 'Test'}</Text>
+                  <Text style={styles.value}>{userInfo.location || '--'}</Text>
                 </View>
               </View>
             ) : (
