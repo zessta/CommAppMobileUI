@@ -179,7 +179,7 @@ const GroupChatScreen: React.FC = () => {
         createdAt: new Date(chat.createdOn),
         user: {
           _id: chat.senderId,
-          name: users.find((u) => u.userId === chat.senderId)?.userName || 'Unknown',
+          name: users.find((u: Participants) => u.userId === chat.senderId)?.userName || 'Unknown',
           avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${users.find((u) => u.userId === chat.senderId)?.userName || 'User'}`,
         },
       }));
@@ -267,7 +267,7 @@ const GroupChatScreen: React.FC = () => {
 
   const renderMessage = (props: any) => {
     const { currentMessage } = props;
-    const isCurrentUser = currentMessage.user._id === user?.id;
+    const isCurrentUser = currentMessage.user._id === user?.userId;
 
     return (
       <Animated.View entering={FadeIn} exiting={FadeOut}>
@@ -368,9 +368,9 @@ const GroupChatScreen: React.FC = () => {
             messages={messages}
             onSend={onSend}
             user={{
-              _id: Number(user?.id) || 0,
-              name: user?.name || 'Unknown',
-              avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.name || 'User'}`,
+              _id: Number(user?.userId) || 0,
+              name: user?.fullName || 'Unknown',
+              avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
             }}
             renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
             onInputTextChanged={setEnteredText}

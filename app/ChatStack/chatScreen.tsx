@@ -1,5 +1,5 @@
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatDataProps, ChatMessageServer, ChatScreenProps } from '@/constants/Types';
+import { ChatDataProps, ChatMessageServer, ChatScreenProps, UserDTO } from '@/constants/Types';
 import { getImageById, getUsersChatHistory, uploadImage } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import * as signalR from '@microsoft/signalr';
@@ -20,7 +20,7 @@ interface AttachmentUploadResponse {
 const ChatScreen: React.FC = () => {
   const searchParams = useLocalSearchParams<ChatScreenProps>();
   const receiverData: ChatDataProps = JSON.parse(searchParams.receiverData);
-  const senderData: ChatDataProps = JSON.parse(searchParams.senderData);
+  const senderData: UserDTO = JSON.parse(searchParams.senderData);
   const conversationId: number | undefined = searchParams?.conversationId
     ? Number(JSON.parse(searchParams?.conversationId))
     : undefined;
@@ -45,7 +45,7 @@ const ChatScreen: React.FC = () => {
   const handleIncomingMessage = useCallback(
     async (chatMes: ChatMessageServer, index: number, senderId: number, receiverId: number) => {
       const chatUserName: string =
-        chatMes.senderId === senderId ? senderData?.name : receiverData.name;
+        chatMes.senderId === senderId ? senderData?.fullName : receiverData.name;
       const message: IMessage = {
         _id: uuidv4(),
         text: chatMes.messageText,
@@ -60,7 +60,7 @@ const ChatScreen: React.FC = () => {
       }
       setMessages((prevMessages) => GiftedChat.append(prevMessages, [message]));
     },
-    [receiverData.name, senderData?.name],
+    [receiverData.name, senderData?.fullName],
   );
 
   const setupConnection = useCallback(async () => {
@@ -69,12 +69,12 @@ const ChatScreen: React.FC = () => {
       const userChatHistoryData: ChatMessageServer[] = await getUsersChatHistory(conversationId);
       if (userChatHistoryData.length) {
         userChatHistoryData.reverse().forEach((chat: ChatMessageServer, index: number) => {
-          handleIncomingMessage(chat, index, Number(senderData.id), Number(receiverData.id));
+          handleIncomingMessage(chat, index, Number(senderData.userId), Number(receiverData.id));
         });
       }
     }
     connection.on('ReceiveMessage', handleReceivedMessage);
-  }, [connection, handleIncomingMessage, receiverData.id, senderData.id, conversationId]);
+  }, [connection, handleIncomingMessage, receiverData.id, senderData.userId, conversationId]);
 
   const pickAndUploadImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -93,9 +93,9 @@ const ChatScreen: React.FC = () => {
           text: '',
           createdAt: new Date(),
           user: {
-            _id: Number(senderData.id),
-            name: senderData?.name,
-            avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData?.name}`,
+            _id: Number(senderData.userId),
+            name: senderData?.fullName,
+            avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData?.fullName}`,
           },
           image: uri,
         };
@@ -239,9 +239,9 @@ const ChatScreen: React.FC = () => {
         messages={messages}
         onSend={(messages: IMessage[]) => onSend(messages)}
         user={{
-          _id: Number(senderData?.id),
-          name: senderData?.name,
-          avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData?.name}`,
+          _id: Number(senderData?.userId),
+          name: senderData?.fullName,
+          avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData?.fullName}`,
         }}
         renderFooter={renderFooter}
         renderInputToolbar={renderInputToolbar}

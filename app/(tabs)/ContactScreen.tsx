@@ -13,16 +13,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '@/components/UserContext';
-import { ChatConversationType, UserListType } from '@/constants/Types';
+import { ChatConversationType, UserDTO } from '@/constants/Types';
 import { getLastChatHistory, getUserList } from '@/services/api/auth';
 import { router } from 'expo-router';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 // Interface for contact item props
 interface ContactItemProps {
-  item: UserListType;
+  item: UserDTO;
   onPress: () => void;
-  user: any; // Replace 'any' with the actual user type if available
+  user: UserDTO; // Replace 'any' with the actual user type if available
 }
 
 // Contact Item Component
@@ -32,13 +32,13 @@ const ContactItem: React.FC<ContactItemProps> = ({ item, onPress }) => {
       <View style={styles.avatarContainer}>
         <Image
           source={{
-            uri: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${item.userName}`,
+            uri: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${item.fullName}`,
           }}
           style={styles.profileImage}
         />
       </View>
       <View style={styles.textContainer}>
-        <Text style={styles.userName}>{item.userName}</Text>
+        <Text style={styles.userName}>{item.fullName}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -47,7 +47,7 @@ const ContactItem: React.FC<ContactItemProps> = ({ item, onPress }) => {
 // Main Component
 const ContactScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [contactsList, setContactsList] = useState<UserListType[]>([]);
+  const [contactsList, setContactsList] = useState<UserDTO[]>([]);
   const [userLastMessageList, setUserLastMessageList] = useState<ChatConversationType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -61,10 +61,12 @@ const ContactScreen = () => {
     try {
       const [users, chatHistory] = await Promise.all([
         getUserList(),
-        getLastChatHistory(user?.id!),
+        getLastChatHistory(user?.userId!),
       ]);
-      const filteredUsers = users.filter((u) => u.userId !== user?.id);
-      const filteredChatHistory = chatHistory.filter((chat) => chat.groupId === null);
+      const filteredUsers = users.filter((u: UserDTO) => u.userId !== user?.userId);
+      const filteredChatHistory = chatHistory.filter(
+        (chat: ChatConversationType) => chat.groupId === null,
+      );
       setContactsList(filteredUsers);
       setUserLastMessageList(filteredChatHistory);
     } catch (error) {
@@ -73,22 +75,20 @@ const ContactScreen = () => {
       setLoading(false);
     }
   };
-
   const filteredContacts = contactsList
-    .filter((contact) => contact.userName.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => a.userName.localeCompare(b.userName));
+    .filter((contact) => contact.fullName?.toLowerCase?.().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => a.fullName?.localeCompare?.(b.fullName));
 
   // Group contacts by the first letter of the username
   const groupedContacts = filteredContacts.reduce(
     (acc, item) => {
-      const firstLetter = item.userName.charAt(0).toUpperCase();
+      const firstLetter = item.fullName.charAt(0).toUpperCase();
       if (!acc[firstLetter]) acc[firstLetter] = [];
       acc[firstLetter].push(item);
       return acc;
     },
-    {} as { [key: string]: UserListType[] },
+    {} as { [key: string]: UserDTO[] },
   );
-
   // Convert grouped object to array for SectionList
   const sections = Object.keys(groupedContacts)
     .sort()
@@ -97,8 +97,8 @@ const ContactScreen = () => {
       data: groupedContacts[letter],
     }));
 
-  const handleContactPress = (item: UserListType) => {
-    const receiverDataObject = JSON.stringify({ id: item.userId, name: item.userName });
+  const handleContactPress = (item: UserDTO) => {
+    const receiverDataObject = JSON.stringify({ id: item.userId, name: item.fullName });
     router.push({
       pathname: '/ChatStack/chatScreen',
       params: {
@@ -186,7 +186,7 @@ const ContactScreen = () => {
           sections={sections}
           renderItem={({ item }) => (
             <Animated.View entering={FadeIn} exiting={FadeOut}>
-              <ContactItem item={item} onPress={() => handleContactPress(item)} user={user} />
+              <ContactItem item={item} onPress={() => handleContactPress(item)} user={user!} />
             </Animated.View>
           )}
           renderSectionHeader={({ section }) => (

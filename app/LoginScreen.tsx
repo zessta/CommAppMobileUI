@@ -61,13 +61,9 @@ const LoginScreen = () => {
     setButtonLoading(true);
     try {
       const userData = await login(input, password);
-      const userNameFromMail = extractUsername(input);
       if (userData) {
-        const getTestInfo = CHAT_TEST_DATA.find(
-          (chat) => chat.name.toLowerCase() === userNameFromMail,
-        );
-        await AsyncStorage.setItem('userData', JSON.stringify(getTestInfo));
-        setUser(getTestInfo!);
+        await AsyncStorage.setItem('userData', JSON.stringify(userData.user));
+        setUser(userData.user!);
         await AsyncStorage.setItem('authToken', userData.token);
         router.push({ pathname: '/(tabs)/chatListScreen', params: { userInputName: input } });
       }

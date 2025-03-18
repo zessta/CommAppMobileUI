@@ -10,7 +10,6 @@ export const login = async (email: string, password: string) => {
     // Make POST request to login endpoint
     const response = await client.post(ENDPOINTS.login, { email, password });
     const token = response.data.token;
-
     await AsyncStorage.setItem('authToken', token);
 
     return handleSuccess(response); // Handle successful response

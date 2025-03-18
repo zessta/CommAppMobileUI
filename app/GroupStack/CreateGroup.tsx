@@ -1,6 +1,6 @@
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { UserListType } from '@/constants/Types';
+import { UserDTO } from '@/constants/Types';
 import { getUserList } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import Checkbox from 'expo-checkbox';
@@ -26,7 +26,7 @@ const CreateGroup = ({
   const { user } = useUser();
   const connection = useSignalR(SOCKET_URL);
   const [groupName, setGroupName] = useState<string>('');
-  const [contactsList, setContactsList] = useState<UserListType[]>([]);
+  const [contactsList, setContactsList] = useState<UserDTO[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
   const [fadeAnim] = useState(new Animated.Value(0)); // Animation for modal fade-in
   const [scaleAnim] = useState(new Animated.Value(0.95)); // Animation for scale effect
@@ -48,8 +48,8 @@ const CreateGroup = ({
   }, []);
 
   const getContactsList = async () => {
-    const getAllUsers: UserListType[] = await getUserList();
-    const filterOutUser = getAllUsers.filter((contacts) => contacts.userId !== user?.id);
+    const getAllUsers: UserDTO[] = await getUserList();
+    const filterOutUser = getAllUsers.filter((contacts) => contacts.userId !== user?.userId);
     setContactsList(filterOutUser);
   };
 
@@ -63,7 +63,7 @@ const CreateGroup = ({
     if (!groupName.trim()) return alert('Please enter a group name');
     if (selectedContacts.length === 0) return alert('Please select at least one member');
 
-    selectedContacts.push(user?.id!);
+    selectedContacts.push(user?.userId!);
     await connection!.invoke('CreateGroup', groupName, selectedContacts);
     alert('Group created successfully');
     setIsDialogVisible(false);
@@ -122,7 +122,7 @@ const CreateGroup = ({
                     style={styles.checkbox}
                     color={selectedContacts.includes(item.userId) ? '#4a90e2' : '#ccc'}
                   />
-                  <Text style={styles.contactName}>{item.userName}</Text>
+                  <Text style={styles.contactName}>{item.fullName}</Text>
                 </TouchableOpacity>
               )}
               keyExtractor={(item) => Math.random().toString()}

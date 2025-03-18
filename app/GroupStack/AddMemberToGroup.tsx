@@ -1,6 +1,6 @@
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { Group, Participants, UserListType } from '@/constants/Types';
+import { Group, Participants, UserDTO } from '@/constants/Types';
 import { getUserList } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import Checkbox from 'expo-checkbox';
@@ -32,7 +32,7 @@ const AddMembersToGroup: React.FC<AddMembersToGroupProps> = ({
 }) => {
   const { user } = useUser();
   const connection = useSignalR(SOCKET_URL);
-  const [contactsList, setContactsList] = useState<UserListType[]>([]);
+  const [contactsList, setContactsList] = useState<UserDTO[]>([]);
   const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.95));
@@ -44,10 +44,10 @@ const AddMembersToGroup: React.FC<AddMembersToGroupProps> = ({
 
     try {
       setIsLoading(true);
-      const allUsers: UserListType[] = await getUserList();
+      const allUsers: UserDTO[] = await getUserList();
       const filteredUsers = allUsers.filter(
         (contact) =>
-          contact.userId !== user?.id && // Exclude current user
+          contact.userId !== user?.userId && // Exclude current user
           !groupUserList.some((groupUser) => groupUser.userId === contact.userId),
       );
       setContactsList(filteredUsers);
@@ -57,7 +57,7 @@ const AddMembersToGroup: React.FC<AddMembersToGroupProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [connection, selectedGroup?.groupId, groupUserList, user?.id]);
+  }, [connection, selectedGroup?.groupId, groupUserList, user?.userId]);
 
   useEffect(() => {
     if (!connection || !selectedGroup?.groupId) return;
@@ -141,7 +141,7 @@ const AddMembersToGroup: React.FC<AddMembersToGroupProps> = ({
     ]).start(() => setIsDialogVisible(false));
   };
 
-  const renderContact = ({ item }: { item: UserListType }) => (
+  const renderContact = ({ item }: { item: UserDTO }) => (
     <TouchableOpacity
       style={[
         styles.contactCard,
@@ -155,7 +155,7 @@ const AddMembersToGroup: React.FC<AddMembersToGroupProps> = ({
         style={styles.checkbox}
         color={selectedContactIds.includes(item.userId) ? '#4a90e2' : '#ccc'}
       />
-      <Text style={styles.contactName}>{item.userName}</Text>
+      <Text style={styles.contactName}>{item.fullName}</Text>
     </TouchableOpacity>
   );
 

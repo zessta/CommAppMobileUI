@@ -84,3 +84,16 @@ export type ChatScreenProps = {
   senderData: string;
   conversationId?: string;
 };
+
+export type UserDTO = {
+  dateOfBirth: string; // Date of birth as string
+  email: string; // Email address
+  fullName: string; // Full name of the user
+  location: string; // Location is an empty string, can be a city, country, etc.
+  mobileNo: string; // Mobile number, though "abcd" is a placeholder here.
+  policeStation: string; // Police station information (empty string here)
+  rank: string; // Rank can be a string (empty in this case)
+  role: number; // Numeric value indicating the user's role
+  userId: number; // Unique identifier for the user
+  zone: string; // Zone is currently an empty string
+};
