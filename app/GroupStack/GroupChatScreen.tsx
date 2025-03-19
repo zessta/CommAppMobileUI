@@ -4,15 +4,32 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
 import { ChatMessageServer, Group, Participants } from '@/constants/Types';
-import { getGroupChatHistory, getGroupUsers } from '@/services/api/auth';
+import { getGroupChatHistory, getGroupUsers, updateStatusOfTags } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import Checkbox from 'expo-checkbox';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Composer, GiftedChat, IMessage, InputToolbar, Send } from 'react-native-gifted-chat';
+import {
+  Composer,
+  GiftedChat,
+  IMessage as OriginalIMessage,
+  InputToolbar,
+  Send,
+} from 'react-native-gifted-chat';
 import Translator from 'react-native-translator';
 import { v4 as uuidv4 } from 'uuid';
 import AddMembersToGroup from './AddMemberToGroup';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import SendTagMessage, { TagMessageProp } from './SendTagMessage';
+export type SelectedStatusTagProps = {
+  eventTagStatusId: number;
+  statusName: string;
+  tagId: number;
+};
+interface IMessage extends OriginalIMessage {
+  customData?: {
+    statuses?: SelectedStatusTagProps[];
+  };
+}
 
 // Custom Components
 const HeaderLeft = ({ onBack, groupName }: { onBack: () => void; groupName: string }) => (
@@ -29,12 +46,18 @@ const HeaderLeft = ({ onBack, groupName }: { onBack: () => void; groupName: stri
   </View>
 );
 
-const HeaderRight = ({ onAddMember }: { onAddMember: () => void }) => (
+const HeaderRight = ({
+  onAddMember,
+  onSendTagMessage,
+}: {
+  onAddMember: () => void;
+  onSendTagMessage: () => void;
+}) => (
   <View style={styles.headerRight}>
-    <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
+    <TouchableOpacity onPress={() => onSendTagMessage()} style={styles.headerIcon}>
       <IconSymbol size={24} name="poll" color="#A08E67" />
     </TouchableOpacity>
-    <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
+    <TouchableOpacity onPress={() => onAddMember()} style={styles.headerIcon}>
       <IconSymbol size={24} name="adduser" color="#A08E67" />
     </TouchableOpacity>
   </View>
@@ -162,6 +185,7 @@ const GroupChatScreen: React.FC = () => {
   const [groupUsers, setGroupUsers] = useState<Participants[]>([]);
   const [enteredText, setEnteredText] = useState<string>('');
   const [translatedText, setTranslatedText] = useState<string>('');
+  const [isTagDialogVisible, setIsTagDialogVisible] = useState<boolean>(false);
 
   const groupUsersMemo = useMemo(() => groupUsers, [groupUsers]);
 
@@ -265,9 +289,22 @@ const GroupChatScreen: React.FC = () => {
     });
   }, [selectedGroup, groupUsers]);
 
+  // Handle status click
+  const handleStatusClick = async (status: SelectedStatusTagProps) => {
+    console.log(`Status clicked: ${status.statusName} (ID: ${status.eventTagStatusId})`);
+    const updateStatus = await updateStatusOfTags(status.tagId, status.eventTagStatusId);
+    console.log('voted succesfullt', updateStatus);
+    // Add your custom function here, e.g., updateStatus(status);
+  };
+
   const renderMessage = (props: any) => {
     const { currentMessage } = props;
     const isCurrentUser = currentMessage.user._id === user?.userId;
+
+    // Split text into message and tag name (if applicable)
+    const [messageText, tagName] = currentMessage.text.includes('\n')
+      ? currentMessage.text.split('\n')
+      : [currentMessage.text, null];
 
     return (
       <Animated.View entering={FadeIn} exiting={FadeOut}>
@@ -283,8 +320,29 @@ const GroupChatScreen: React.FC = () => {
             <Text style={styles.senderName}>{currentMessage.user.name}</Text>
             <View style={[styles.bubble, isCurrentUser ? styles.bubbleRight : styles.bubbleLeft]}>
               <Text style={[styles.bubbleText, { color: isCurrentUser ? '#FFF' : '#333' }]}>
-                {currentMessage.text}
+                {messageText}
               </Text>
+              {tagName && (
+                <Text
+                  style={[
+                    styles.bubbleText,
+                    { color: isCurrentUser ? '#D1C4E9' : '#0288D1', marginTop: 5 },
+                  ]}>
+                  {tagName}
+                </Text>
+              )}
+              {currentMessage.customData?.statuses?.length > 0 && (
+                <View style={styles.statusContainer}>
+                  {currentMessage.customData.statuses.map((status: any) => (
+                    <TouchableOpacity
+                      key={status.eventTagStatusId}
+                      style={styles.statusButton}
+                      onPress={() => handleStatusClick(status)}>
+                      <Text style={styles.statusText}>{status.statusName}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
             <Text style={styles.timestamp}>
               {currentMessage.createdAt.toLocaleTimeString([], {
@@ -332,6 +390,54 @@ const GroupChatScreen: React.FC = () => {
       />
     );
   };
+  const tagSendMessage = (tagMessage: TagMessageProp) => {
+    if (!tagMessage.tag) return;
+
+    const formattedText = `${tagMessage.message}\n${tagMessage.tag.name}`; // Message + Tag Name
+    const statuses = tagMessage.tag.statuses; // Array of statuses
+    const tagId = tagMessage.tag.eventTagId;
+    setMessages((prev) =>
+      GiftedChat.append(prev, [
+        {
+          _id: uuidv4(),
+          text: formattedText,
+          createdAt: new Date(),
+          user: {
+            _id: user?.userId!,
+            name: user?.fullName,
+            avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName}`,
+          },
+          // Custom property to store statuses
+          customData: {
+            statuses: statuses.map((status) => ({
+              eventTagStatusId: status.eventTagStatusId,
+              statusName: status.statusName,
+              tagId: tagId,
+            })),
+          },
+        },
+      ]),
+    );
+  };
+  if (isDialogVisible) {
+    return (
+      <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.dialogContainer}>
+        <AddMembersToGroup
+          setIsDialogVisible={setIsDialogVisible}
+          selectedGroup={selectedGroup || { groupId: 0, groupName: '' }}
+          groupUserList={groupUsers}
+        />
+      </Animated.View>
+    );
+  }
+
+  if (isTagDialogVisible) {
+    return (
+      // <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.dialogContainer}>
+      <SendTagMessage setIsTagDialogVisible={setIsTagDialogVisible} onSend={tagSendMessage} />
+      // </Animated.View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -351,48 +457,43 @@ const GroupChatScreen: React.FC = () => {
               onPress={navigateToGroupDetails}
             />
           ),
-          headerRight: () => <HeaderRight onAddMember={() => setIsDialogVisible(true)} />,
+          headerRight: () => (
+            <HeaderRight
+              onAddMember={() => setIsDialogVisible(true)}
+              onSendTagMessage={() => setIsTagDialogVisible(true)}
+            />
+          ),
         }}
       />
-      {isDialogVisible ? (
-        <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.dialogContainer}>
-          <AddMembersToGroup
-            setIsDialogVisible={setIsDialogVisible}
-            selectedGroup={selectedGroup || { groupId: 0, groupName: '' }}
-            groupUserList={groupUsers}
-          />
-        </Animated.View>
-      ) : (
-        <View style={styles.chatContainer}>
-          <GiftedChat
-            messages={messages}
-            onSend={onSend}
-            user={{
-              _id: Number(user?.userId) || 0,
-              name: user?.fullName || 'Unknown',
-              avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
-            }}
-            renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
-            onInputTextChanged={setEnteredText}
-            text={enteredText}
-            placeholder="Enter a message..."
-            renderMessage={renderMessage}
-            renderDay={renderDay}
-            renderInputToolbar={renderInputToolbar}
-            inverted={true}
-            // listViewProps={{
-            //   contentContainerStyle: styles.chatListContent,
-            // }}
-          />
-          <TranslateBar
-            onTranslate={handleTranslate}
-            enteredText={enteredText}
-            setTranslatedText={setTranslatedText}
-          />
-          {translatedText && <Text style={styles.translatedText}>{translatedText}</Text>}
-          {translatedText && <AcceptButton onAccept={handleAcceptTranslation} />}
-        </View>
-      )}
+      <View style={styles.chatContainer}>
+        <GiftedChat
+          messages={messages}
+          onSend={onSend}
+          user={{
+            _id: Number(user?.userId) || 0,
+            name: user?.fullName || 'Unknown',
+            avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
+          }}
+          renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
+          onInputTextChanged={setEnteredText}
+          text={enteredText}
+          placeholder="Enter a message..."
+          renderMessage={renderMessage}
+          // renderDay={renderDay}
+          renderInputToolbar={renderInputToolbar}
+          inverted={true}
+          // listViewProps={{
+          //   contentContainerStyle: styles.chatListContent,
+          // }}
+        />
+        <TranslateBar
+          onTranslate={handleTranslate}
+          enteredText={enteredText}
+          setTranslatedText={setTranslatedText}
+        />
+        {translatedText && <Text style={styles.translatedText}>{translatedText}</Text>}
+        {translatedText && <AcceptButton onAccept={handleAcceptTranslation} />}
+      </View>
     </View>
   );
 };
@@ -528,7 +629,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 0,
   },
   bubbleRight: {
-    backgroundColor: '#234B89',
+    backgroundColor: '#A08E67',
     borderBottomRightRadius: 0,
     alignSelf: 'flex-end',
   },
@@ -616,6 +717,24 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  statusButton: {
+    backgroundColor: '#E0F7FA',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 5,
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#0277BD',
+    fontWeight: '500',
   },
 });
 

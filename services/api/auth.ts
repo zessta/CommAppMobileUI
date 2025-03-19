@@ -118,3 +118,35 @@ export const getImageById = async (attachmentId: number) => {
     handleError(error); // Handle error response
   }
 };
+
+export const getTagList = async () => {
+  try {
+    const response = await client.get(`${ENDPOINTS.getTagList}`);
+    return handleSuccess(response); // Handle successful response
+  } catch (error) {
+    handleError(error); // Handle error response
+  }
+};
+
+export const getTagById = async (tagId: number) => {
+  try {
+    const response = await client.get(`${ENDPOINTS.getTagById}/${tagId}`);
+    return handleSuccess(response); // Handle successful response
+  } catch (error) {
+    handleError(error); // Handle error response
+  }
+};
+
+export const updateStatusOfTags = async (tagId: number, statusId: number) => {
+  try {
+    const response = await client.put(
+      `${ENDPOINTS.updateStatusByTagId.replace('{tags}', tagId.toString())}`,
+      {
+        statusId: statusId,
+      },
+    );
+    return handleSuccess(response); // Handle successful response
+  } catch (error) {
+    handleError(error); // Handle error response
+  }
+};

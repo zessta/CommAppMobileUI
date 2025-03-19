@@ -97,3 +97,15 @@ export type UserDTO = {
   userId: number; // Unique identifier for the user
   zone: string; // Zone is currently an empty string
 };
+
+export type Status = {
+  eventTagStatusId: number;
+  statusName: string;
+};
+
+export type EventTag = {
+  eventTagId: number;
+  name: string;
+  description: string;
+  statuses: Status[];
+};
