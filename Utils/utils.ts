@@ -1,6 +1,14 @@
-import { ChatDataProps, Group, UserListType } from '@/constants/Types';
+import {
+  ChatConversationType,
+  ChatDataProps,
+  EventTag,
+  Group,
+  Participants,
+  UserListType,
+} from '@/constants/Types';
 import moment from 'moment';
 import 'moment-timezone';
+import { v4 as uuidv4 } from 'uuid';
 
 export const formattedTimeString = (time: string) => {
   // Convert the ISO string time to a JavaScript Date object
@@ -40,6 +48,62 @@ export function extractUsername(email: string): string {
   const username = email.split('@')[0];
   return username;
 }
+
+export const messageFormat = ({
+  text,
+  userName,
+  senderId,
+  tagListResponse,
+  createdOn,
+}: {
+  text: string;
+  userName: string;
+  senderId: number;
+  tagListResponse: EventTag | null;
+  createdOn?: string;
+}) => {
+  return {
+    _id: uuidv4(),
+    text: text,
+    createdAt: createdOn ? new Date(createdOn) : new Date(),
+    user: {
+      _id: senderId,
+      name: userName || 'Unknown',
+      avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${userName || 'User'}`,
+    },
+    ...(tagListResponse && {
+      customData: {
+        statuses: tagListResponse.statuses.map((status) => ({
+          eventTagStatusId: status.eventTagStatusId,
+          statusName: status.statusName,
+          tagId: tagListResponse.eventTagId,
+        })),
+      },
+    }),
+  };
+};
+
+export const groupMessageFormat = ({
+  message,
+  senderId,
+  groupUsers,
+}: {
+  message: string;
+  senderId: number;
+  groupUsers: Participants[];
+}) => {
+  const userName = groupUsers.find((u) => u.userId === senderId)?.userName;
+  return {
+    _id: uuidv4(),
+    text: message,
+    createdAt: new Date(),
+    user: {
+      _id: senderId,
+      name: userName || 'Unknown',
+      avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${userName || 'User'}`,
+    },
+  };
+};
 
 export const sampleChatConversations: ChatConversationType[] = [
   {

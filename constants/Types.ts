@@ -51,6 +51,7 @@ export type ChatMessageServer = {
   messageType: number;
   senderId: number;
   attachmentId: null;
+  eventTagId: string;
 };
 
 export type UserListType = {

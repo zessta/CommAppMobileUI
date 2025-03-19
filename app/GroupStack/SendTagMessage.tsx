@@ -30,7 +30,7 @@ export type EventTag = {
 };
 
 export type TagMessageProp = {
-  tag: EventTag | undefined;
+  tag: EventTag;
   message: string;
 };
 
