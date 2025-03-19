@@ -1,8 +1,10 @@
 // services/api/responseHandler.ts
 export const handleSuccess = (response: any) => {
   // Handle successful API response
-  console.log('API call successful', response.data);
-  return response.data; // Return the data for further processing
+  // console.log('API call successful', response.data);
+  if (response.status === 200) {
+    return response.data;
+  } // Return the data for further processing
 };
 
 export const handleError = (error: any) => {

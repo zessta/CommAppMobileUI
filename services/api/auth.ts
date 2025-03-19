@@ -137,14 +137,13 @@ export const getTagById = async (tagId: number) => {
   }
 };
 
-export const updateStatusOfTags = async (tagId: number, statusId: number) => {
+export const updateStatusOfTags = async (groupId: number, tagId: number, statusId: number) => {
+  const replaceTagId = ENDPOINTS.updateStatusByTagId.replace('{tags}', tagId.toString());
+  const groupIdAndTagId = replaceTagId.replace('{groupId}', groupId.toString());
   try {
-    const response = await client.put(
-      `${ENDPOINTS.updateStatusByTagId.replace('{tags}', tagId.toString())}`,
-      {
-        statusId: statusId,
-      },
-    );
+    const response = await client.put(groupIdAndTagId, {
+      statusId: statusId,
+    });
     return handleSuccess(response); // Handle successful response
   } catch (error) {
     handleError(error); // Handle error response

@@ -11,5 +11,5 @@ export const ENDPOINTS = {
   getImage: 'api/attachments/{id}/download',
   getTagList: 'api/tags/list',
   getTagById: 'api/tags',
-  updateStatusByTagId: 'api/tags/{tags}/status',
+  updateStatusByTagId: 'api/tags/{groupId}/{tags}/status',
 };

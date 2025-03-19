@@ -1,10 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatMessageServer, Group, Participants } from '@/constants/Types';
-import { getGroupChatHistory, getGroupUsers, updateStatusOfTags } from '@/services/api/auth';
+import { ChatMessageServer, EventTag, Group, Participants } from '@/constants/Types';
+import {
+  getGroupChatHistory,
+  getGroupUsers,
+  getTagById,
+  updateStatusOfTags,
+} from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import Checkbox from 'expo-checkbox';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
@@ -20,11 +33,16 @@ import { v4 as uuidv4 } from 'uuid';
 import AddMembersToGroup from './AddMemberToGroup';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import SendTagMessage, { TagMessageProp } from './SendTagMessage';
+import TranslateBar from '@/components/TranslateBar';
+import RenderMessage from '@/components/RenderMessage';
+import { groupMessageFormat, messageFormat } from '@/Utils/utils';
+
 export type SelectedStatusTagProps = {
   eventTagStatusId: number;
   statusName: string;
   tagId: number;
 };
+
 interface IMessage extends OriginalIMessage {
   customData?: {
     statuses?: SelectedStatusTagProps[];
@@ -54,10 +72,10 @@ const HeaderRight = ({
   onSendTagMessage: () => void;
 }) => (
   <View style={styles.headerRight}>
-    <TouchableOpacity onPress={() => onSendTagMessage()} style={styles.headerIcon}>
+    <TouchableOpacity onPress={onSendTagMessage} style={styles.headerIcon}>
       <IconSymbol size={24} name="poll" color="#A08E67" />
     </TouchableOpacity>
-    <TouchableOpacity onPress={() => onAddMember()} style={styles.headerIcon}>
+    <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
       <IconSymbol size={24} name="adduser" color="#A08E67" />
     </TouchableOpacity>
   </View>
@@ -76,91 +94,6 @@ const Placeholder = () => (
     </View>
   </Animated.View>
 );
-
-const TranslateBar = ({
-  onTranslate,
-  enteredText,
-  setTranslatedText,
-}: {
-  onTranslate: (result: string) => void;
-  enteredText: string;
-  setTranslatedText: React.Dispatch<React.SetStateAction<string>>;
-}) => {
-  const [result, setResult] = useState<string>('');
-  const [transLang, setTransLang] = useState<string>('te');
-  const [isTeluguChecked, setIsTeluguChecked] = useState<boolean>(true);
-  const [isHindiChecked, setIsHindiChecked] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
-
-  const languageList = useMemo(
-    () => [
-      { value: 'te', title: 'Telugu' },
-      { value: 'hi', title: 'Hindi' },
-    ],
-    [],
-  );
-
-  const handleLangChange = useCallback((lang: string) => {
-    if (lang === 'te') {
-      setIsTeluguChecked(true);
-      setIsHindiChecked(false);
-      setTransLang('te');
-    } else if (lang === 'hi') {
-      setIsTeluguChecked(false);
-      setIsHindiChecked(true);
-      setTransLang('hi');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (enteredText && enteredText !== 'Enter a URL') {
-      setResult('');
-    }
-  }, [enteredText, transLang]);
-
-  const handleTranslateButtonPress = useCallback(() => {
-    if (!enteredText || result === 'Enter a URL') return;
-    setLoading(true);
-    setTimeout(() => {
-      setTranslatedText(result);
-      onTranslate(result);
-      setLoading(false);
-    }, 1000);
-  }, [enteredText, result, onTranslate, setTranslatedText]);
-
-  return (
-    <Animated.View entering={FadeIn} exiting={FadeOut}>
-      <View style={styles.translateContainer}>
-        {languageList.map((lang) => (
-          <View style={styles.checkboxRow} key={lang.value}>
-            <Checkbox
-              value={lang.value === 'te' ? isTeluguChecked : isHindiChecked}
-              onValueChange={() => handleLangChange(lang.value)}
-              style={styles.checkbox}
-              color={isTeluguChecked || isHindiChecked ? '#234B89' : undefined}
-            />
-            <Text style={styles.checkboxText}>{lang.title}</Text>
-          </View>
-        ))}
-        <TouchableOpacity style={styles.translateButton} onPress={handleTranslateButtonPress}>
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.translateText}>Translate</Text>
-          )}
-        </TouchableOpacity>
-        {enteredText && (
-          <Translator
-            from="en"
-            to={transLang}
-            value={enteredText}
-            onTranslated={(t) => setResult(t)}
-          />
-        )}
-      </View>
-    </Animated.View>
-  );
-};
 
 const AcceptButton = ({ onAccept }: { onAccept: () => void }) => (
   <Animated.View entering={FadeIn} exiting={FadeOut}>
@@ -187,7 +120,13 @@ const GroupChatScreen: React.FC = () => {
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isTagDialogVisible, setIsTagDialogVisible] = useState<boolean>(false);
 
-  const groupUsersMemo = useMemo(() => groupUsers, [groupUsers]);
+  // if (!user) {
+  //   return (
+  //     <View style={styles.container}>
+  //       <Text>User not logged in</Text>
+  //     </View>
+  //   );
+  // }
 
   const fetchGroupData = useCallback(async () => {
     if (!selectedGroup?.groupId) return;
@@ -197,24 +136,37 @@ const GroupChatScreen: React.FC = () => {
         getGroupChatHistory(selectedGroup.groupId),
       ]);
       setGroupUsers(users);
-      const formattedMessages = history.map((chat: ChatMessageServer) => ({
-        _id: uuidv4(),
-        text: chat.messageText,
-        createdAt: new Date(chat.createdOn),
-        user: {
-          _id: chat.senderId,
-          name: users.find((u: Participants) => u.userId === chat.senderId)?.userName || 'Unknown',
-          avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${users.find((u) => u.userId === chat.senderId)?.userName || 'User'}`,
-        },
-      }));
-      setMessages(formattedMessages);
+      const formattedMessages = await Promise.all(
+        history.map(async (chat: ChatMessageServer) => {
+          const tagListResponse: EventTag | null = chat?.eventTagId
+            ? await getTagById(Number(chat.eventTagId))
+            : null;
+          const formattedText = chat?.eventTagId
+            ? `${chat.messageText}\n#${tagListResponse?.name}`
+            : chat.messageText;
+          const userName = users.find((u: Participants) => u.userId === chat.senderId)?.userName;
+
+          return messageFormat({
+            text: formattedText,
+            userName: userName,
+            senderId: chat.senderId,
+            tagListResponse: tagListResponse,
+            createdOn: chat.createdOn,
+          });
+        }),
+      );
+      setMessages(formattedMessages); // Ensure correct order for inverted chat
     } catch (error) {
       console.error('Error fetching group data:', error);
     }
-  }, [selectedGroup?.groupId]);
+  }, [selectedGroup]);
 
   useEffect(() => {
-    if (!connection) return;
+    fetchGroupData();
+  }, [fetchGroupData]);
+
+  useEffect(() => {
+    if (!connection || connection.state !== 'Connected') return;
 
     const handleReceiveMessage = (
       senderId: number,
@@ -222,20 +174,12 @@ const GroupChatScreen: React.FC = () => {
       groupName: string,
       groupId: number,
     ) => {
-      setMessages((prev) =>
-        GiftedChat.append(prev, [
-          {
-            _id: groupId || uuidv4(),
-            text: message,
-            createdAt: new Date(),
-            user: {
-              _id: senderId,
-              name: groupUsers.find((u) => u.userId === senderId)?.userName || 'Unknown',
-              avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${groupUsers.find((u) => u.userId === senderId)?.userName || 'User'}`,
-            },
-          },
-        ]),
-      );
+      const formattedMessage = groupMessageFormat({
+        message: message,
+        senderId: senderId,
+        groupUsers: groupUsers,
+      });
+      setMessages((prev) => GiftedChat.append(prev, [formattedMessage]));
     };
 
     const handleMemberAdded = (groupId: number, newMember: string) => {
@@ -246,7 +190,6 @@ const GroupChatScreen: React.FC = () => {
 
     connection.on('ReceiveGroupMessage', handleReceiveMessage);
     connection.on('GroupMemberAdded', handleMemberAdded);
-    fetchGroupData();
 
     return () => {
       connection.off('ReceiveGroupMessage', handleReceiveMessage);
@@ -261,12 +204,12 @@ const GroupChatScreen: React.FC = () => {
       try {
         await connection.invoke('SendMessageToGroup', selectedGroup?.groupId, message.text);
         setEnteredText('');
-        fetchGroupData();
+        fetchGroupData(); // Refresh messages after sending
       } catch (error) {
         console.error('Error sending message:', error);
       }
     },
-    [connection, selectedGroup?.groupId],
+    [connection, selectedGroup],
   );
 
   const handleTranslate = useCallback((trans: string) => {
@@ -289,74 +232,59 @@ const GroupChatScreen: React.FC = () => {
     });
   }, [selectedGroup, groupUsers]);
 
-  // Handle status click
   const handleStatusClick = async (status: SelectedStatusTagProps) => {
-    console.log(`Status clicked: ${status.statusName} (ID: ${status.eventTagStatusId})`);
-    const updateStatus = await updateStatusOfTags(status.tagId, status.eventTagStatusId);
-    console.log('voted succesfullt', updateStatus);
-    // Add your custom function here, e.g., updateStatus(status);
+    try {
+      const updateStatus = await updateStatusOfTags(
+        selectedGroup?.groupId!,
+        status.tagId,
+        status.eventTagStatusId,
+      );
+      if (updateStatus) {
+        alert('Voted successfully');
+      }
+      fetchGroupData(); // Refresh to reflect status update
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+  };
+
+  const tagSendMessage = async (tagMessage: TagMessageProp) => {
+    // if (!tagMessage.tag || !connection || connection.state !== 'Connected') return;
+
+    const formattedText = `${tagMessage.message}\n${tagMessage.tag.name}`;
+    const tagId = tagMessage.tag.eventTagId;
+
+    try {
+      const sendMesRes = await connection!.invoke(
+        'SendMessageToGroup',
+        selectedGroup?.groupId,
+        tagMessage.message,
+      );
+      if (sendMesRes) {
+        await connection!.invoke(
+          'AttachEventTagToMessage',
+          Number(selectedGroup?.groupId),
+          sendMesRes,
+          Number(tagId),
+        );
+        const formatMessage = messageFormat({
+          text: formattedText,
+          senderId: user!.userId,
+          userName: user!.fullName,
+          tagListResponse: tagMessage.tag,
+        });
+        setMessages((prev) => GiftedChat.append(prev, [formatMessage]));
+        Alert.alert('Success', 'Tag attached');
+      }
+      setEnteredText('');
+    } catch (error) {
+      console.error('Error sending tag message:', error);
+      Alert.alert('Error', 'Failed to send tag message');
+    }
   };
 
   const renderMessage = (props: any) => {
-    const { currentMessage } = props;
-    const isCurrentUser = currentMessage.user._id === user?.userId;
-
-    // Split text into message and tag name (if applicable)
-    const [messageText, tagName] = currentMessage.text.includes('\n')
-      ? currentMessage.text.split('\n')
-      : [currentMessage.text, null];
-
-    return (
-      <Animated.View entering={FadeIn} exiting={FadeOut}>
-        <View
-          style={[
-            styles.messageContainer,
-            isCurrentUser ? styles.messageContainerRight : styles.messageContainerLeft,
-          ]}>
-          {!isCurrentUser && (
-            <Image source={{ uri: currentMessage.user.avatar }} style={styles.messageAvatar} />
-          )}
-          <View style={styles.messageContent}>
-            <Text style={styles.senderName}>{currentMessage.user.name}</Text>
-            <View style={[styles.bubble, isCurrentUser ? styles.bubbleRight : styles.bubbleLeft]}>
-              <Text style={[styles.bubbleText, { color: isCurrentUser ? '#FFF' : '#333' }]}>
-                {messageText}
-              </Text>
-              {tagName && (
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    { color: isCurrentUser ? '#D1C4E9' : '#0288D1', marginTop: 5 },
-                  ]}>
-                  {tagName}
-                </Text>
-              )}
-              {currentMessage.customData?.statuses?.length > 0 && (
-                <View style={styles.statusContainer}>
-                  {currentMessage.customData.statuses.map((status: any) => (
-                    <TouchableOpacity
-                      key={status.eventTagStatusId}
-                      style={styles.statusButton}
-                      onPress={() => handleStatusClick(status)}>
-                      <Text style={styles.statusText}>{status.statusName}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-            <Text style={styles.timestamp}>
-              {currentMessage.createdAt.toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </Text>
-          </View>
-          {isCurrentUser && (
-            <Image source={{ uri: currentMessage.user.avatar }} style={styles.messageAvatar} />
-          )}
-        </View>
-      </Animated.View>
-    );
+    return <RenderMessage messageProps={props} handleStatusClick={handleStatusClick} />;
   };
 
   const renderDay = (props: any) => (
@@ -367,58 +295,28 @@ const GroupChatScreen: React.FC = () => {
     </Animated.View>
   );
 
-  const renderInputToolbar = (props: React.ComponentProps<typeof InputToolbar>) => {
-    return (
-      <InputToolbar
-        {...props}
-        containerStyle={styles.inputToolbar}
-        renderComposer={(composerProps) => (
-          <View style={styles.composerContainer}>
-            <Composer
-              {...composerProps}
-              textInputStyle={styles.input}
-              placeholder="Enter a message..."
-              placeholderTextColor="#757575"
-            />
-          </View>
-        )}
-        renderSend={(sendProps) => (
-          <Send {...sendProps} containerStyle={styles.sendButton}>
-            <IconSymbol size={24} name="send" color="#A08E67" />
-          </Send>
-        )}
-      />
-    );
-  };
-  const tagSendMessage = (tagMessage: TagMessageProp) => {
-    if (!tagMessage.tag) return;
+  const renderInputToolbar = (props: React.ComponentProps<typeof InputToolbar>) => (
+    <InputToolbar
+      {...props}
+      containerStyle={styles.inputToolbar}
+      renderComposer={(composerProps) => (
+        <View style={styles.composerContainer}>
+          <Composer
+            {...composerProps}
+            textInputStyle={styles.input}
+            placeholder="Enter a message..."
+            placeholderTextColor="#757575"
+          />
+        </View>
+      )}
+      renderSend={(sendProps) => (
+        <Send {...sendProps} containerStyle={styles.sendButton}>
+          <IconSymbol size={24} name="send" color="#A08E67" />
+        </Send>
+      )}
+    />
+  );
 
-    const formattedText = `${tagMessage.message}\n${tagMessage.tag.name}`; // Message + Tag Name
-    const statuses = tagMessage.tag.statuses; // Array of statuses
-    const tagId = tagMessage.tag.eventTagId;
-    setMessages((prev) =>
-      GiftedChat.append(prev, [
-        {
-          _id: uuidv4(),
-          text: formattedText,
-          createdAt: new Date(),
-          user: {
-            _id: user?.userId!,
-            name: user?.fullName,
-            avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName}`,
-          },
-          // Custom property to store statuses
-          customData: {
-            statuses: statuses.map((status) => ({
-              eventTagStatusId: status.eventTagStatusId,
-              statusName: status.statusName,
-              tagId: tagId,
-            })),
-          },
-        },
-      ]),
-    );
-  };
   if (isDialogVisible) {
     return (
       <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.dialogContainer}>
@@ -432,11 +330,7 @@ const GroupChatScreen: React.FC = () => {
   }
 
   if (isTagDialogVisible) {
-    return (
-      // <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.dialogContainer}>
-      <SendTagMessage setIsTagDialogVisible={setIsTagDialogVisible} onSend={tagSendMessage} />
-      // </Animated.View>
-    );
+    return <SendTagMessage setIsTagDialogVisible={setIsTagDialogVisible} onSend={tagSendMessage} />;
   }
 
   return (
@@ -445,8 +339,8 @@ const GroupChatScreen: React.FC = () => {
         options={{
           headerStyle: {
             backgroundColor: '#fff',
-            borderBottomWidth: 1,
-            borderBottomColor: '#f0f0f0',
+            // borderBottomWidth: 1,
+            // borderBottomColor: '#f0f0f0',
           },
           headerLeft: () => (
             <HeaderLeft onBack={() => router.back()} groupName={selectedGroup?.groupName || ''} />
@@ -482,17 +376,18 @@ const GroupChatScreen: React.FC = () => {
           // renderDay={renderDay}
           renderInputToolbar={renderInputToolbar}
           inverted={true}
-          // listViewProps={{
-          //   contentContainerStyle: styles.chatListContent,
-          // }}
         />
         <TranslateBar
           onTranslate={handleTranslate}
           enteredText={enteredText}
           setTranslatedText={setTranslatedText}
         />
-        {translatedText && <Text style={styles.translatedText}>{translatedText}</Text>}
-        {translatedText && <AcceptButton onAccept={handleAcceptTranslation} />}
+        {translatedText && (
+          <>
+            <Text style={styles.translatedText}>{translatedText}</Text>
+            <AcceptButton onAccept={handleAcceptTranslation} />
+          </>
+        )}
       </View>
     </View>
   );
@@ -506,14 +401,9 @@ const styles = StyleSheet.create({
   chatContainer: {
     flex: 1,
   },
-  chatListContent: {
-    padding: 10,
-    flexGrow: 1,
-  },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    // marginLeft: 10,
   },
   headerRight: {
     flexDirection: 'row',
@@ -607,12 +497,6 @@ const styles = StyleSheet.create({
   },
   messageContent: {
     flex: 1,
-  },
-  senderName: {
-    fontSize: 12,
-    color: '#757575',
-    marginBottom: 2,
-    alignSelf: 'flex-start',
   },
   bubble: {
     borderRadius: 15,

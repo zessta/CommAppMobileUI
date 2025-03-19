@@ -108,7 +108,7 @@ const GroupListScreen = () => {
   );
 
   const handleCreateGroup = () => {
-    setIsDialogVisible(true);
+    router.push('/GroupStack/CreateGroupScreen');
   };
 
   const onRefresh = async () => {
@@ -227,7 +227,7 @@ const GroupListScreen = () => {
         />
       </View>
 
-      {isDialogVisible ? <CreateGroup setIsDialogVisible={setIsDialogVisible} /> : null}
+      {/* {isDialogVisible ? <CreateGroup setIsDialogVisible={setIsDialogVisible} /> : null} */}
     </View>
   );
 };
