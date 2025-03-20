@@ -1,17 +1,15 @@
-import { SelectedStatusTagProps } from '@/app/GroupStack/GroupChatScreen';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useUser } from './UserContext';
-const RenderMessage = ({
-  messageProps,
-  handleStatusClick,
-}: {
-  messageProps: any;
-  handleStatusClick: (status: SelectedStatusTagProps) => void;
-}) => {
-  const { user } = useUser();
 
+interface RenderMessageProps {
+  messageProps: any;
+  handleStatusClick: (currentUserMessage: any) => void;
+}
+
+const RenderMessage: React.FC<RenderMessageProps> = ({ messageProps, handleStatusClick }) => {
+  const { user } = useUser();
   const { currentMessage } = messageProps;
   const isCurrentUser = currentMessage.user._id === user?.userId;
 
@@ -26,52 +24,75 @@ const RenderMessage = ({
           styles.messageContainer,
           isCurrentUser ? styles.messageContainerRight : styles.messageContainerLeft,
         ]}>
-        {!isCurrentUser && (
-          <Image source={{ uri: currentMessage.user.avatar }} style={styles.messageAvatar} />
-        )}
-        <View style={styles.messageContent}>
-          <View style={[styles.bubble, isCurrentUser ? styles.bubbleRight : styles.bubbleLeft]}>
-            <Text style={[styles.bubbleText, { color: isCurrentUser ? '#FFF' : '#333' }]}>
-              {messageText}
-            </Text>
-            {tagName && (
-              <Text
-                style={[
-                  styles.bubbleText,
-                  { color: isCurrentUser ? '#D1C4E9' : '#0288D1', marginTop: 5 },
-                ]}>
-                {tagName}
-              </Text>
-            )}
-            {currentMessage.customData?.statuses?.length > 0 && (
-              <View style={styles.statusContainer}>
-                {currentMessage.customData.statuses.map((status: SelectedStatusTagProps) => (
-                  <TouchableOpacity
-                    disabled={isCurrentUser}
-                    key={status.eventTagStatusId}
-                    style={styles.statusButton}
-                    onPress={() => handleStatusClick(status)}>
-                    <Text style={styles.statusText}>{status.statusName}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-          <Text style={styles.timestamp}>
-            {currentMessage.createdAt.toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </Text>
-        </View>
-        {isCurrentUser && (
-          <Image source={{ uri: currentMessage.user.avatar }} style={styles.messageAvatar} />
-        )}
+        {!isCurrentUser && <MessageAvatar uri={currentMessage.user.avatar} />}
+        <MessageContent
+          isCurrentUser={isCurrentUser}
+          messageText={messageText}
+          tagName={tagName}
+          handleStatusClick={handleStatusClick}
+          currentMessage={currentMessage}
+        />
+        {isCurrentUser && <MessageAvatar uri={currentMessage.user.avatar} />}
       </View>
     </Animated.View>
   );
 };
+
+const MessageAvatar = ({ uri }: { uri: string }) => (
+  <Image source={{ uri }} style={styles.messageAvatar} />
+);
+
+const MessageContent = ({
+  isCurrentUser,
+  messageText,
+  tagName,
+  handleStatusClick,
+  currentMessage,
+}: {
+  isCurrentUser: boolean;
+  messageText: string;
+  tagName: string | null;
+  handleStatusClick: (currentUserMessage: any) => void;
+  currentMessage: any;
+}) => (
+  <View style={styles.messageContent}>
+    <View style={[styles.bubble, isCurrentUser ? styles.bubbleRight : styles.bubbleLeft]}>
+      <Text style={[styles.bubbleText, { color: isCurrentUser ? '#FFF' : '#333' }]}>
+        {messageText}
+      </Text>
+      {tagName && (
+        <StatusTag
+          tagName={tagName}
+          currentMessage={currentMessage}
+          handleStatusClick={handleStatusClick}
+        />
+      )}
+    </View>
+    <Text style={styles.timestamp}>
+      {currentMessage.createdAt.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })}
+    </Text>
+  </View>
+);
+
+const StatusTag = ({
+  tagName,
+  currentMessage,
+  handleStatusClick,
+}: {
+  tagName: string;
+  currentMessage: any;
+  handleStatusClick: (currentUserMessage: any) => void;
+}) => (
+  <TouchableOpacity style={styles.statusButton} onPress={() => handleStatusClick(currentMessage)}>
+    <Text style={styles.statusText}>{`#${tagName}`}</Text>
+  </TouchableOpacity>
+);
+
 export default RenderMessage;
+
 const styles = StyleSheet.create({
   messageContainer: {
     flexDirection: 'row',
@@ -117,23 +138,26 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginHorizontal: 5,
   },
-  statusContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-  },
   statusButton: {
-    backgroundColor: '#E0F7FA',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 12,
+    backgroundColor: '#E3F2FD', // Soft blue background
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20, // More rounded corners
     marginRight: 8,
     marginBottom: 5,
+    borderWidth: 1,
+    borderColor: '#0277BD', // Slight border to define the tag
+    elevation: 3, // Add some depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   statusText: {
-    fontSize: 12,
-    color: '#0277BD',
-    fontWeight: '500',
+    fontSize: 14, // Increased size for visibility
+    color: '#0277BD', // Contrast with soft background
+    fontWeight: '600', // Slightly bolder font for emphasis
+    textTransform: 'capitalize', // Capitalize the first letter of the tag
   },
   timestamp: {
     fontSize: 12,
