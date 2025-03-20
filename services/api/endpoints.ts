@@ -12,4 +12,5 @@ export const ENDPOINTS = {
   getTagList: 'api/tags/list',
   getTagById: 'api/tags',
   updateStatusByTagId: 'api/tags/{groupId}/{tags}/status',
+  getStatusResponses: 'api/tags/{tags}/responses',
 };

@@ -1,41 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import RenderMessage from '@/components/RenderMessage';
+import TranslateBar from '@/components/TranslateBar';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useUser } from '@/components/UserContext';
 import { SOCKET_URL } from '@/constants/Strings';
-import { ChatMessageServer, EventTag, Group, Participants } from '@/constants/Types';
-import {
-  getGroupChatHistory,
-  getGroupUsers,
-  getTagById,
-  updateStatusOfTags,
-} from '@/services/api/auth';
+import { ChatMessageServer, Group, Participants } from '@/constants/Types';
+import { getGroupChatHistory, getGroupUsers, updateStatusOfTags } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
-import Checkbox from 'expo-checkbox';
+import { groupMessageFormat, messageFormat } from '@/Utils/utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
   Composer,
   GiftedChat,
-  IMessage as OriginalIMessage,
   InputToolbar,
+  IMessage as OriginalIMessage,
   Send,
 } from 'react-native-gifted-chat';
-import Translator from 'react-native-translator';
-import { v4 as uuidv4 } from 'uuid';
-import AddMembersToGroup from './AddMemberToGroup';
 import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import AddMembersToGroup from './AddMemberToGroup';
 import SendTagMessage, { TagMessageProp } from './SendTagMessage';
-import TranslateBar from '@/components/TranslateBar';
-import RenderMessage from '@/components/RenderMessage';
-import { groupMessageFormat, messageFormat } from '@/Utils/utils';
+import TagStatusUpdate from '@/components/TagStatusUpdate';
 
 export type SelectedStatusTagProps = {
   eventTagStatusId: number;
@@ -47,6 +32,7 @@ interface IMessage extends OriginalIMessage {
   customData?: {
     statuses?: SelectedStatusTagProps[];
   };
+  eventTagId?: number | null;
 }
 
 // Custom Components
@@ -119,7 +105,9 @@ const GroupChatScreen: React.FC = () => {
   const [enteredText, setEnteredText] = useState<string>('');
   const [translatedText, setTranslatedText] = useState<string>('');
   const [isTagDialogVisible, setIsTagDialogVisible] = useState<boolean>(false);
-
+  const [isUpdateTagDialogVisible, setIsUpdateTagDialogVisible] = useState<boolean>(false);
+  const [selectedStatus, setSelectedStatus] = useState<number>();
+  const [chatHistory, setChatHistory] = useState<ChatMessageServer[]>();
   // if (!user) {
   //   return (
   //     <View style={styles.container}>
@@ -136,13 +124,11 @@ const GroupChatScreen: React.FC = () => {
         getGroupChatHistory(selectedGroup.groupId),
       ]);
       setGroupUsers(users);
-      const formattedMessages = await Promise.all(
+      setChatHistory(history);
+      const formattedMessages: IMessage[] = await Promise.all(
         history.map(async (chat: ChatMessageServer) => {
-          const tagListResponse: EventTag | null = chat?.eventTagId
-            ? await getTagById(Number(chat.eventTagId))
-            : null;
           const formattedText = chat?.eventTagId
-            ? `${chat.messageText}\n#${tagListResponse?.name}`
+            ? `${chat.messageText}\n${chat.eventTagName}`
             : chat.messageText;
           const userName = users.find((u: Participants) => u.userId === chat.senderId)?.userName;
 
@@ -150,8 +136,9 @@ const GroupChatScreen: React.FC = () => {
             text: formattedText,
             userName: userName,
             senderId: chat.senderId,
-            tagListResponse: tagListResponse,
+            tagListResponse: null,
             createdOn: chat.createdOn,
+            eventTagId: Number(chat?.eventTagId),
           });
         }),
       );
@@ -232,19 +219,15 @@ const GroupChatScreen: React.FC = () => {
     });
   }, [selectedGroup, groupUsers]);
 
-  const handleStatusClick = async (status: SelectedStatusTagProps) => {
-    try {
-      const updateStatus = await updateStatusOfTags(
-        selectedGroup?.groupId!,
-        status.tagId,
-        status.eventTagStatusId,
-      );
-      if (updateStatus) {
-        alert('Voted successfully');
-      }
-      fetchGroupData(); // Refresh to reflect status update
-    } catch (error) {
-      console.error('Error updating status:', error);
+  const handleStatusClick = async (currentUserMessage: any) => {
+    if (currentUserMessage.user._id === user?.userId) {
+      router.push({
+        pathname: '/GroupStack/TagStatusResponses',
+        params: { tagId: currentUserMessage.eventTagId },
+      });
+    } else {
+      setSelectedStatus(currentUserMessage.eventTagId);
+      setIsUpdateTagDialogVisible(true);
     }
   };
 
@@ -329,6 +312,16 @@ const GroupChatScreen: React.FC = () => {
     );
   }
 
+  // if (isUpdateTagDialogVisible) {
+  //   return (
+  //     <TagStatusUpdate
+  //       selectedGroup={selectedGroup!}
+  //       status={selectedStatus!}
+  //       setIsUpdateTagDialogVisible={setIsUpdateTagDialogVisible}
+  //     />
+  //   );
+  // }
+
   if (isTagDialogVisible) {
     return <SendTagMessage setIsTagDialogVisible={setIsTagDialogVisible} onSend={tagSendMessage} />;
   }
@@ -359,36 +352,53 @@ const GroupChatScreen: React.FC = () => {
           ),
         }}
       />
-      <View style={styles.chatContainer}>
-        <GiftedChat
-          messages={messages}
-          onSend={onSend}
-          user={{
-            _id: Number(user?.userId) || 0,
-            name: user?.fullName || 'Unknown',
-            avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
-          }}
-          renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
-          onInputTextChanged={setEnteredText}
-          text={enteredText}
-          placeholder="Enter a message..."
-          renderMessage={renderMessage}
-          // renderDay={renderDay}
-          renderInputToolbar={renderInputToolbar}
-          inverted={true}
+      {isUpdateTagDialogVisible ? (
+        <TagStatusUpdate
+          selectedGroup={selectedGroup!}
+          status={selectedStatus!}
+          setIsUpdateTagDialogVisible={setIsUpdateTagDialogVisible}
         />
-        <TranslateBar
-          onTranslate={handleTranslate}
-          enteredText={enteredText}
-          setTranslatedText={setTranslatedText}
-        />
-        {translatedText && (
-          <>
-            <Text style={styles.translatedText}>{translatedText}</Text>
-            <AcceptButton onAccept={handleAcceptTranslation} />
-          </>
-        )}
-      </View>
+      ) : (
+        <View style={styles.chatContainer}>
+          <GiftedChat
+            messages={messages}
+            onSend={onSend}
+            user={{
+              _id: Number(user?.userId) || 0,
+              name: user?.fullName || 'Unknown',
+              avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
+            }}
+            renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
+            onInputTextChanged={setEnteredText}
+            text={enteredText}
+            placeholder="Enter a message..."
+            renderMessage={renderMessage}
+            // renderDay={renderDay}
+            renderInputToolbar={renderInputToolbar}
+            inverted={true}
+          />
+          <View style={styles.translateContainer}>
+            <TouchableOpacity
+              style={styles.translateButton}
+              onPress={() => setIsTagDialogVisible(true)}>
+              <IconSymbol size={24} name="poll" color="white" />
+
+              {/* <Text style={styles.translateText}>Translate</Text> */}
+            </TouchableOpacity>
+          </View>
+          {/* <TranslateBar
+            onTranslate={handleTranslate}
+            enteredText={enteredText}
+            setTranslatedText={setTranslatedText}
+          />
+          {translatedText && (
+            <>
+              <Text style={styles.translatedText}>{translatedText}</Text>
+              <AcceptButton onAccept={handleAcceptTranslation} />
+            </>
+          )} */}
+        </View>
+      )}
     </View>
   );
 };
@@ -448,6 +458,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    justifyContent: 'center',
   },
   translateButton: {
     backgroundColor: '#A08E67',

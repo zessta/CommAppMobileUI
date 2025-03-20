@@ -149,3 +149,14 @@ export const updateStatusOfTags = async (groupId: number, tagId: number, statusI
     handleError(error); // Handle error response
   }
 };
+
+export const getStatusResponses = async (tagId: number) => {
+  try {
+    const response = await client.get(
+      `${ENDPOINTS.getStatusResponses.replace('{tags}', tagId.toString())}`,
+    );
+    return handleSuccess(response); // Handle successful response
+  } catch (error) {
+    handleError(error); // Handle error response
+  }
+};

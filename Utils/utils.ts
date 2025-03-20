@@ -55,12 +55,14 @@ export const messageFormat = ({
   senderId,
   tagListResponse,
   createdOn,
+  eventTagId,
 }: {
   text: string;
   userName: string;
   senderId: number;
   tagListResponse: EventTag | null;
   createdOn?: string;
+  eventTagId?: number;
 }) => {
   return {
     _id: uuidv4(),
@@ -71,6 +73,7 @@ export const messageFormat = ({
       name: userName || 'Unknown',
       avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${userName || 'User'}`,
     },
+    eventTagId: eventTagId || null,
     ...(tagListResponse && {
       customData: {
         statuses: tagListResponse.statuses.map((status) => ({

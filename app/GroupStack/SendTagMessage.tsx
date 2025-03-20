@@ -155,12 +155,35 @@ const SendTagMessage = ({ setIsTagDialogVisible, onSend }: SendTagMessageProps) 
             />
 
             {/* Action Buttons */}
-            <View style={styles.buttonContainer}>
+            {/* <View style={styles.buttonContainer}>
               <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
                 <Text style={styles.buttonText}>Send</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={closeModal} style={styles.cancelButton}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View> */}
+            <View style={styles.buttonContainer}>
+              {/* Send Button */}
+              <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
+                <LinearGradient
+                  colors={['#4a90e2', '#357abd']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradientButton}>
+                  <Text style={styles.buttonText}>Send</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Cancel Button */}
+              <TouchableOpacity onPress={closeModal} style={styles.sendButton}>
+                <LinearGradient
+                  colors={['#fff', '#fff']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.cancelGradientButton}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -177,6 +200,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  saveButton: {
+    flex: 1,
+  },
+  gradientButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    // borderWidth: 1,
+  },
+  cancelGradientButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderColor: '#A08E67',
+    borderWidth: 0.5,
   },
   dialogContainer: {
     width: '90%',
@@ -266,29 +305,33 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
   },
-  button: {
+  sendButton: {
     flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
     marginHorizontal: 5,
   },
-  sendButton: {
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#ecf0f1',
-    borderWidth: 1,
-    borderColor: '#bdc3c7',
-  },
   cancelButton: {
-    paddingVertical: 10,
+    flex: 1,
+    paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: '#ecf0f1',
     borderWidth: 1,
     borderColor: '#bdc3c7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
   },
   buttonText: {
-    color: '#000',
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
+  // cancelButtonText: {
+  //   color: '#000',
+  //   fontSize: 16,
+  //   fontWeight: '600',
+  // },
   cancelButtonText: {
     color: '#7f8c8d',
     fontSize: 16,

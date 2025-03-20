@@ -14,6 +14,7 @@ export default function RootLayout() {
           <Stack.Screen name="LoginScreen" options={{ headerShown: false }} />
           <Stack.Screen name="GroupStack/GroupDetailsScreen" options={{ headerShown: false }} />
           <Stack.Screen name="GroupStack/CreateGroupScreen" options={{ headerShown: false }} />
+          <Stack.Screen name="GroupStack/TagStatusResponses" options={{ headerShown: false }} />
           <Stack.Screen name="ChatStack/chatScreen" />
           <Stack.Screen name="+not-found" />
         </Stack>
