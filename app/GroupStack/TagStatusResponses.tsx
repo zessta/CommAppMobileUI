@@ -11,6 +11,10 @@ interface StatusResponse {
   userName: string;
   status: string;
 }
+interface TagStatusResponsesProps {
+  tagId: string; 
+  onClose: () => void; 
+}
 
 // Status Item Component
 const StatusItem: React.FC<{ item: StatusResponse }> = ({ item }) => {
@@ -28,29 +32,32 @@ const StatusItem: React.FC<{ item: StatusResponse }> = ({ item }) => {
 };
 
 // Main Component
-const TagStatusResponses = () => {
+const TagStatusResponses: React.FC<TagStatusResponsesProps> = ({ tagId,onClose })=> {
   const [statusResponses, setStatusResponses] = useState<StatusResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
   const params = useLocalSearchParams();
-  const tagId = Number(params.tagId); // Get tagId from navigation params
 
   // Fetch status responses
   useEffect(() => {
-    const fetchStatusResponses = async () => {
-      try {
-        setLoading(true);
-        const responses = await getStatusResponses(tagId);
-        setStatusResponses(responses || []);
-      } catch (error) {
-        console.error('Error fetching status responses:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStatusResponses();
+    if (tagId) {
+      fetchStatusResponses(tagId);
+    }
   }, [tagId]);
+
+  const fetchStatusResponses = async (tagId: string) => {
+    try {
+      setLoading(true);
+      const responses = await getStatusResponses(Number(tagId));
+      console.log('Status responses:', responses);
+      setStatusResponses(responses || []);
+    } catch (error) {
+      console.error('Error fetching status responses:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleBackPress = () => {
     router.back();
@@ -58,27 +65,25 @@ const TagStatusResponses = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackPress}>
-          <Ionicons name="arrow-back" size={24} color="#A08E67" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tag Responses</Text>
-        <View style={styles.iconPlaceholder} /> {/* To balance the header */}
-      </View>
+      {/* Close Button */}
+      <Text style={styles.headerTitle}>Tag Responses</Text>
+
+      <TouchableOpacity onPress={onClose}  style={{ position: 'absolute', top: 10, right: 10, zIndex: 1 }}>
+      <Ionicons name="close" size={24} color="#A08E67" />
+      </TouchableOpacity>
 
       {/* White Container for FlatList */}
-      <View style={styles.listContainer}>
-        {loading ? (
-          <Loader loadingText="Loading responses..." />
-        ) : (
-          <FlatList
-            data={statusResponses}
-            keyExtractor={(item) => item.userId.toString()}
-            renderItem={({ item }) => <StatusItem item={item} />}
-            ListEmptyComponent={<Text style={styles.noResponsesText}>No responses found</Text>}
-          />
-        )}
+      <View style={[styles.listContainer, { flex: 1, margin: 0, borderTopLeftRadius: 10, borderTopRightRadius: 10 }]}>
+      {loading ? (
+      <Loader loadingText="Loading responses..." />
+      ) : (
+      <FlatList
+      data={statusResponses}
+      keyExtractor={(item) => item.userId.toString()}
+      renderItem={({ item }) => <StatusItem item={item} />}
+      ListEmptyComponent={<Text style={styles.noResponsesText}>No responses found</Text>}
+      />
+      )}
       </View>
     </View>
   );
@@ -86,10 +91,19 @@ const TagStatusResponses = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#f5f7fe',
-  },
-  header: {
+    flex: 0.7, // Adjusted from 0.75 to match inline style
+    marginVertical: 50,
+    width: '80%',
+    marginHorizontal: 15,
+    borderRadius: 10,
+    backgroundColor: '#f5f7fe', 
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    padding: 15,
+    top:10
+  },  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
