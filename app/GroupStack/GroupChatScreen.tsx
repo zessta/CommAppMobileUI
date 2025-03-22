@@ -74,13 +74,27 @@ const HeaderTitle = ({ title, onPress }: { title: string; onPress: () => void })
   </TouchableOpacity>
 );
 
-const Placeholder = () => (
-  <Animated.View entering={FadeIn} exiting={FadeOut}>
-    <View style={styles.placeholderContainer}>
-      <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
-    </View>
-  </Animated.View>
-);
+const Placeholder = () => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisible(true);
+    }, 500); // Show placeholder after 0.5 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!visible) return null; 
+
+  return (
+    <Animated.View entering={FadeIn} exiting={FadeOut}>
+      <View style={styles.placeholderContainer}>
+        <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
+      </View>
+    </Animated.View>
+  );
+};
 
 const AcceptButton = ({ onAccept }: { onAccept: () => void }) => (
   <Animated.View entering={FadeIn} exiting={FadeOut}>
