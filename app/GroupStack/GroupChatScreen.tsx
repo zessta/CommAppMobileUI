@@ -9,7 +9,7 @@ import { useSignalR } from '@/services/signalRService';
 import { groupMessageFormat, messageFormat } from '@/Utils/utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View ,Modal} from 'react-native';
 import {
   Composer,
   GiftedChat,
@@ -21,6 +21,7 @@ import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-nati
 import AddMembersToGroup from './AddMemberToGroup';
 import SendTagMessage, { TagMessageProp } from './SendTagMessage';
 import TagStatusUpdate from '@/components/TagStatusUpdate';
+import TagStatusResponses from './TagStatusResponses';
 
 export type SelectedStatusTagProps = {
   eventTagStatusId: number;
@@ -219,17 +220,19 @@ const GroupChatScreen: React.FC = () => {
     });
   }, [selectedGroup, groupUsers]);
 
+  const [isTagModalVisible, setIsTagModalVisible] = useState(false);
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+
   const handleStatusClick = async (currentUserMessage: any) => {
     if (currentUserMessage.user._id === user?.userId) {
-      router.push({
-        pathname: '/GroupStack/TagStatusResponses',
-        params: { tagId: currentUserMessage.eventTagId },
-      });
+      setSelectedTagId(currentUserMessage.eventTagId);
+      setIsTagModalVisible(true);
     } else {
       setSelectedStatus(currentUserMessage.eventTagId);
       setIsUpdateTagDialogVisible(true);
     }
   };
+
 
   const tagSendMessage = async (tagMessage: TagMessageProp) => {
     // if (!tagMessage.tag || !connection || connection.state !== 'Connected') return;
@@ -360,23 +363,41 @@ const GroupChatScreen: React.FC = () => {
         />
       ) : (
         <View style={styles.chatContainer}>
-          <GiftedChat
-            messages={messages}
-            onSend={onSend}
-            user={{
-              _id: Number(user?.userId) || 0,
-              name: user?.fullName || 'Unknown',
-              avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
-            }}
-            renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
-            onInputTextChanged={setEnteredText}
-            text={enteredText}
-            placeholder="Enter a message..."
-            renderMessage={renderMessage}
-            // renderDay={renderDay}
-            renderInputToolbar={renderInputToolbar}
-            inverted={true}
-          />
+       <GiftedChat
+        messages={messages}
+        onSend={onSend}
+        user={{
+          _id: Number(user?.userId) || 0,
+          name: user?.fullName || 'Unknown',
+          avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
+        }}
+        renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
+        onInputTextChanged={setEnteredText}
+        text={enteredText}
+        placeholder="Enter a message..."
+        renderMessage={renderMessage}
+        renderInputToolbar={renderInputToolbar}
+        inverted={true}
+      />
+
+      {/* Modal for TagStatusResponses */}
+      <Modal
+        visible={isTagModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsTagModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+       
+            {selectedTagId && (
+            <TagStatusResponses
+                    tagId={selectedTagId}
+                            onClose={() => setIsTagModalVisible(false)} // Pass close function
+
+            />
+            )}
+        </View>
+      </Modal>
           <View style={styles.translateContainer}>
             <TouchableOpacity
               style={styles.translateButton}
@@ -631,6 +652,13 @@ const styles = StyleSheet.create({
     color: '#0277BD',
     fontWeight: '500',
   },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+
 });
 
 export default GroupChatScreen;
