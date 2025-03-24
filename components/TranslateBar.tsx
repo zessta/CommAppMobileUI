@@ -45,15 +45,61 @@ const TranslateBar = ({
     }
   }, [enteredText, transLang]);
 
-  const handleTranslateButtonPress = useCallback(() => {
-    if (!enteredText || result === 'Enter a URL') return;
+  const handleTranslateButtonPress = useCallback(async () => {
+    if (!enteredText || enteredText === 'Enter a URL') return;
+    
     setLoading(true);
-    setTimeout(() => {
-      setTranslatedText(result);
-      onTranslate(result);
+
+    const url = "http://40.90.233.51:8000/v1/chat/completions";
+    
+    const payload = {
+      model: "/home/azureuser/finetune/viet_sing_merged_model_6/",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `You are given text in English. Please translate it into ${transLang === 'te' ? 'Telugu' : 'Hindi'}. 
+                     Keep the translation simple. Do not return anything else. 
+                     This is the text: ${enteredText}`
+            }
+          ]
+        }
+      ],
+      temperature: 0.0,
+      top_p: 0.3,
+      top_k: 3,
+      max_tokens: 1024,
+    };
+  
+    try {
+      const startTime = Date.now();
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+  
+      const elapsedTime = (Date.now() - startTime) / 1000;
+  
+      if (response.ok) {
+        const responseData = await response.json();
+        const extractedText = responseData.choices[0].message.content;
+  
+        setTranslatedText(extractedText);
+        onTranslate(extractedText);
+      } else {
+        console.error("Error:", response.status, await response.text());
+      }
+    } catch (error) {
+      console.error("Error parsing response:", error);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, [enteredText, result, onTranslate, setTranslatedText]);
+    }
+  }, [enteredText, transLang, onTranslate, setTranslatedText]);
+  
 
   return (
     <Animated.View entering={FadeIn} exiting={FadeOut}>

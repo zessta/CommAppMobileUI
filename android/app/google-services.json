@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "254714875368",
+    "project_id": "commapp-ee072",
+    "storage_bucket": "commapp-ee072.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:254714875368:android:c22296a8c48b2db2b4a85d",
+        "android_client_info": {
+          "package_name": "com.shivazessta.commApp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvy7aADp2PGV4Au0X7uFQv37Ed6tmTvFw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
