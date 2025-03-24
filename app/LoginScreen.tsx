@@ -3,6 +3,7 @@ import ScreenLoader from '@/components/ScreenLoader';
 import { useUser } from '@/components/UserContext';
 import { CHAT_TEST_DATA } from '@/constants/Strings';
 import { useIsNavigationReady } from '@/hooks/useIsNavigationReady';
+import { useNotification } from '@/hooks/useNotification';
 import { login } from '@/services/api/auth';
 import { extractUsername } from '@/Utils/utils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,6 +30,7 @@ const LoginScreen = () => {
   const { setUser } = useUser();
   const [fadeAnim] = useState(new Animated.Value(0));
   const isNavigationReady = useIsNavigationReady();
+  const { expoPushToken } = useNotification(); //store in BE to trigger notifications to this user.
 
   useEffect(() => {
     const checkToken = async () => {
