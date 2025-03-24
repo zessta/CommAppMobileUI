@@ -18,7 +18,6 @@ import { getGroupsListByUserId, getLastChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
 import { router, useFocusEffect } from 'expo-router';
-import CreateGroup from '@/app/GroupStack/CreateGroup';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 // Interface for group item props

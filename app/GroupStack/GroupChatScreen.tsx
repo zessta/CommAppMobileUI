@@ -421,7 +421,7 @@ const GroupChatScreen: React.FC = () => {
               {/* <Text style={styles.translateText}>Translate</Text> */}
             </TouchableOpacity>
           </View>
-          {/* <TranslateBar
+          <TranslateBar
             onTranslate={handleTranslate}
             enteredText={enteredText}
             setTranslatedText={setTranslatedText}
@@ -431,7 +431,7 @@ const GroupChatScreen: React.FC = () => {
               <Text style={styles.translatedText}>{translatedText}</Text>
               <AcceptButton onAccept={handleAcceptTranslation} />
             </>
-          )} */}
+          )}
         </View>
       )}
     </View>
