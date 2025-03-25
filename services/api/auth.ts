@@ -19,6 +19,16 @@ export const login = async (email: string, password: string) => {
   }
 };
 
+export const updateExpoToken = async (userId: number, token: string) => {
+  try {
+    const response = await client.post(ENDPOINTS.pushRegister, { userId, token });
+    
+    return handleSuccess(response); // Handle successful response
+  } catch (error) {
+    handleError(error); // Handle error response
+  }
+}
+
 export const getLastChatHistory = async (senderId: number) => {
   try {
     const response = await client.get(`${ENDPOINTS.chatLastHistory}/${senderId}`);

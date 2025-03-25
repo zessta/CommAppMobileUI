@@ -4,7 +4,7 @@ import { useUser } from '@/components/UserContext';
 import { CHAT_TEST_DATA } from '@/constants/Strings';
 import { useIsNavigationReady } from '@/hooks/useIsNavigationReady';
 import { useNotification } from '@/hooks/useNotification';
-import { login } from '@/services/api/auth';
+import { login, updateExpoToken } from '@/services/api/auth';
 import { extractUsername } from '@/Utils/utils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -30,7 +30,7 @@ const LoginScreen = () => {
   const { setUser } = useUser();
   const [fadeAnim] = useState(new Animated.Value(0));
   const isNavigationReady = useIsNavigationReady();
-  const { expoPushToken } = useNotification(); //store in BE to trigger notifications to this user.
+  const { registerForPushNotificationsAsync } = useNotification(); //store in BE to trigger notifications to this user.
 
   useEffect(() => {
     const checkToken = async () => {
@@ -64,6 +64,10 @@ const LoginScreen = () => {
     try {
       const userData = await login(input, password);
       if (userData) {
+        const expoToken = await registerForPushNotificationsAsync();
+        if (expoToken) {
+          await updateExpoToken(userData.user.userId, expoToken);
+        }
         await AsyncStorage.setItem('userData', JSON.stringify(userData.user));
         setUser(userData.user!);
         await AsyncStorage.setItem('authToken', userData.token);
