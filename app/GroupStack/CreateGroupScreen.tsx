@@ -1,4 +1,5 @@
 import { useUser } from '@/components/UserContext';
+import { Colors } from '@/constants/Colors';
 import { SOCKET_URL } from '@/constants/Strings';
 import { UserDTO } from '@/constants/Types';
 import { getUserList } from '@/services/api/auth';
@@ -89,7 +90,7 @@ const CreateGroupScreen = ({
           <View style={styles.iconContainer}>
             <Image
               source={{
-                uri: `https://ui-avatars.com/api/?background=A08E67&color=FFF&name=G`,
+                uri: `https://ui-avatars.com/api/?background=E5322D&color=FFF&name=G`,
               }}
               style={styles.profileImage}
             />
@@ -132,7 +133,7 @@ const CreateGroupScreen = ({
               // autoFocus={true}
             />
             <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.closeSearch}>
-              <Ionicons name="close" size={20} color="#A08E67" />
+              <Ionicons name="close" size={20} color={Colors.brightRed} />
             </TouchableOpacity>
           </Animated.View>
           <FlatList
@@ -145,12 +146,14 @@ const CreateGroupScreen = ({
                   value={selectedContacts.includes(item.userId)}
                   onValueChange={() => toggleContactSelection(item.userId)}
                   style={styles.checkbox}
-                  color={selectedContacts.includes(item.userId) ? '#4a90e2' : '#ccc'}
+                  color={
+                    selectedContacts.includes(item.userId) ? Colors.brightRed : Colors.brightRed
+                  }
                 />
                 <View style={styles.avatar}>
                   <Image
                     source={{
-                      uri: `https://ui-avatars.com/api/?background=A08E67&color=FFF&name=${item.fullName}`,
+                      uri: `https://ui-avatars.com/api/?background=E5322D&color=FFF&name=${item.fullName}`,
                     }}
                     style={styles.profileImage}
                   />
@@ -168,7 +171,7 @@ const CreateGroupScreen = ({
           {/* Buttons */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity onPress={cancel} style={styles.cancelButton}>
-              <Text style={styles.buttonText}>Cancel</Text>
+              <Text style={[styles.buttonText, { color: '#000' }]}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={createNewGroup} style={styles.saveButton}>
               <Text style={styles.buttonText}>Save</Text>
@@ -200,7 +203,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#d4d4d4', // Grayish background for icon
+    backgroundColor: Colors.brightRed, // Grayish background for icon
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -210,9 +213,10 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '400',
+    fontWeight: 400,
     color: '#2c3e50',
     marginBottom: 10,
+    fontFamily: 'Poppins_400Regular',
   },
   input: {
     height: 50,
@@ -239,7 +243,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#A08E67',
+    borderColor: Colors.brightRed,
     marginRight: 10,
   },
   avatar: {
@@ -257,8 +261,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   contactName: {
-    fontSize: 16,
+    fontSize: 12,
     color: '#2c3e50',
+    fontWeight: 400,
   },
   flatList: {
     flexGrow: 0,
@@ -284,7 +289,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10, // Reduced the padding for smaller buttons
     borderRadius: 8, // Slightly smaller radius
-    backgroundColor: '#d3d3d3',
+    backgroundColor: Colors.blueColor,
     alignItems: 'center',
     marginLeft: 8, // Reduced margin
     borderColor: '#767676',
@@ -292,7 +297,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: 14, // Reduced the font size for smaller text
-    color: '#2c3e50',
+    color: '#fff',
     fontWeight: '600',
   },
 

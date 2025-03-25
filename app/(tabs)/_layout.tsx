@@ -6,6 +6,7 @@ import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
 
 export default function TabLayout() {
   return (
@@ -27,7 +28,13 @@ export default function TabLayout() {
         name="chatListScreen"
         options={{
           // title: 'Chat',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={'#A08E67'} />,
+          tabBarIcon: ({ focused }) => (
+            <IconSymbol
+              size={28}
+              name="house.fill"
+              color={focused ? Colors.blueColor : Colors.brightRed}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -35,21 +42,39 @@ export default function TabLayout() {
         options={{
           // title: 'Contacts',
 
-          tabBarIcon: ({ color }) => <AntDesign name="contacts" size={28} color="#A08E67" />,
+          tabBarIcon: ({ focused }) => (
+            <AntDesign
+              name="contacts"
+              size={28}
+              color={focused ? Colors.blueColor : Colors.brightRed}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="GroupListScreen"
         options={{
           // title: 'Groups',
-          tabBarIcon: ({ color }) => <MaterialIcons name="groups" size={32} color="#A08E67" />,
+          tabBarIcon: ({ focused }) => (
+            <MaterialIcons
+              name="groups"
+              size={32}
+              color={focused ? Colors.blueColor : Colors.brightRed}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="AboutScreen"
         options={{
           // title: 'About',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person" color={'#A08E67'} />,
+          tabBarIcon: ({ focused }) => (
+            <IconSymbol
+              size={28}
+              name="person"
+              color={focused ? Colors.blueColor : Colors.brightRed}
+            />
+          ),
         }}
       />
     </Tabs>

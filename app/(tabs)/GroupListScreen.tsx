@@ -19,6 +19,7 @@ import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
 import { router, useFocusEffect } from 'expo-router';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { Colors } from '@/constants/Colors';
 
 // Interface for group item props
 interface GroupItemProps {
@@ -158,7 +159,7 @@ const GroupListScreen = () => {
       <View style={styles.header}>
         {isSearchVisible ? (
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#A08E67" style={styles.searchIcon} />
+            <Ionicons name="search" size={20} color={Colors.brightRed} style={styles.searchIcon} />
             <TextInput
               style={styles.searchBar}
               placeholder="Search Groups"
@@ -168,25 +169,30 @@ const GroupListScreen = () => {
               autoFocus={true}
             />
             <TouchableOpacity onPress={toggleSearchBar}>
-              <Ionicons name="close" size={20} color="#A08E67" style={styles.clearIcon} />
+              <Ionicons name="close" size={20} color={Colors.brightRed} style={styles.clearIcon} />
             </TouchableOpacity>
           </View>
         ) : (
           <>
             <TouchableOpacity onPress={handleBackPress}>
-              <Ionicons name="arrow-back" size={24} color="#A08E67" style={styles.backIcon} />
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={Colors.brightRed}
+                style={styles.backIcon}
+              />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Group Chats</Text>
             <View style={styles.iconContainer}>
               <TouchableOpacity onPress={handleCreateGroup}>
-                <MaterialIcons name="group-add" size={24} color="#A08E67" />
+                <MaterialIcons name="group-add" size={24} color={Colors.brightRed} />
               </TouchableOpacity>
               <TouchableOpacity onPress={toggleSearchBar}>
-                <Ionicons name="search" size={24} color="#A08E67" />
+                <Ionicons name="search" size={24} color={Colors.brightRed} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleMenuPress}>
-                <Ionicons name="ellipsis-vertical" size={24} color="#A08E67" />
-              </TouchableOpacity>
+              {/* <TouchableOpacity onPress={handleMenuPress}>
+                <Ionicons name="ellipsis-vertical" size={24} color={Colors.brightRed} />
+              </TouchableOpacity> */}
             </View>
           </>
         )}
@@ -250,7 +256,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#000',
     fontFamily: 'Poppins',
@@ -302,7 +308,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#d4af37', // Gold color from the image
+    backgroundColor: Colors.blueColor, // Gold color from the image
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -327,7 +333,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 12,
-    color: '#A08E67',
+    color: Colors.brightRed,
     textAlign: 'right',
   },
   placeholderText: {

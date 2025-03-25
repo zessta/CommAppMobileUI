@@ -5,6 +5,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { Colors } from '@/constants/Colors';
 
 const AboutScreen = () => {
   const { user, setUser } = useUser();
@@ -37,7 +38,7 @@ const AboutScreen = () => {
       {/* Custom Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBackPress}>
-          <Ionicons name="arrow-back" size={24} color="#A08E67" style={styles.backIcon} />
+          <Ionicons name="arrow-back" size={24} color={Colors.brightRed} style={styles.backIcon} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Profile</Text>
         <View style={styles.iconContainer} />
@@ -57,7 +58,7 @@ const AboutScreen = () => {
             />
             <View style={styles.profileText}>
               <View style={styles.nameContainer}>
-                <Text style={styles.name}>{userInfo?.name || 'Admin'}</Text>
+                <Text style={styles.name}>{user?.fullName || 'Admin'}</Text>
                 <View style={styles.statusDot} />
               </View>
               {/* <Text style={styles.description}>
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#000',
     fontFamily: 'Poppins',
@@ -199,13 +200,13 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: '#666',
+    color: '#B3B3B3',
     fontWeight: '500',
     marginBottom: 5,
   },
   value: {
     fontSize: 14,
-    color: '#333',
+    color: '#000',
     fontWeight: '400',
   },
   logoutContainer: {
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   logoutButton: {
-    backgroundColor: '#FF0000',
+    backgroundColor: Colors.blueColor,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
