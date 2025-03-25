@@ -9,7 +9,7 @@ import { useSignalR } from '@/services/signalRService';
 import { groupMessageFormat, messageFormat } from '@/Utils/utils';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View ,Modal} from 'react-native';
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View, Modal } from 'react-native';
 import {
   Composer,
   GiftedChat,
@@ -22,6 +22,8 @@ import AddMembersToGroup from './AddMemberToGroup';
 import SendTagMessage, { TagMessageProp } from './SendTagMessage';
 import TagStatusUpdate from '@/components/TagStatusUpdate';
 import TagStatusResponses from './TagStatusResponses';
+import { Fontisto, MaterialIcons } from '@expo/vector-icons';
+import { blueColor, Colors } from '@/constants/Colors';
 
 export type SelectedStatusTagProps = {
   eventTagStatusId: number;
@@ -40,11 +42,11 @@ interface IMessage extends OriginalIMessage {
 const HeaderLeft = ({ onBack, groupName }: { onBack: () => void; groupName: string }) => (
   <View style={styles.headerLeft}>
     <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-      <IconSymbol size={24} name="arrow-back" color="#A08E67" />
+      <IconSymbol size={24} name="arrow-back" color={Colors.brightRed} />
     </TouchableOpacity>
     <Image
       source={{
-        uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${groupName || 'Default'}`,
+        uri: `https://ui-avatars.com/api/?background=E5322D&color=FFF&name=${groupName || 'Default'}`,
       }}
       style={styles.avatar}
     />
@@ -59,11 +61,11 @@ const HeaderRight = ({
   onSendTagMessage: () => void;
 }) => (
   <View style={styles.headerRight}>
-    <TouchableOpacity onPress={onSendTagMessage} style={styles.headerIcon}>
+    {/* <TouchableOpacity onPress={onSendTagMessage} style={styles.headerIcon}>
       <IconSymbol size={24} name="poll" color="#A08E67" />
-    </TouchableOpacity>
+    </TouchableOpacity> */}
     <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
-      <IconSymbol size={24} name="adduser" color="#A08E67" />
+      <IconSymbol size={24} name="adduser" color={Colors.brightRed} />
     </TouchableOpacity>
   </View>
 );
@@ -85,7 +87,7 @@ const Placeholder = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  if (!visible) return null; 
+  if (!visible) return null;
 
   return (
     <Animated.View entering={FadeIn} exiting={FadeOut}>
@@ -123,6 +125,8 @@ const GroupChatScreen: React.FC = () => {
   const [isUpdateTagDialogVisible, setIsUpdateTagDialogVisible] = useState<boolean>(false);
   const [selectedStatus, setSelectedStatus] = useState<number>();
   const [chatHistory, setChatHistory] = useState<ChatMessageServer[]>();
+  const [isTranslateBarVisible, setIsTranslateBarVisible] = useState<boolean>(false);
+
   // if (!user) {
   //   return (
   //     <View style={styles.container}>
@@ -215,8 +219,8 @@ const GroupChatScreen: React.FC = () => {
   );
 
   const handleTranslate = useCallback((trans: string) => {
-    if (!trans || trans === 'Enter a URL') return;
-    setTranslatedText(trans);
+    console.log('enteredText', enteredText);
+    setEnteredText(trans);
   }, []);
 
   const handleAcceptTranslation = useCallback(() => {
@@ -246,7 +250,6 @@ const GroupChatScreen: React.FC = () => {
       setIsUpdateTagDialogVisible(true);
     }
   };
-
 
   const tagSendMessage = async (tagMessage: TagMessageProp) => {
     // if (!tagMessage.tag || !connection || connection.state !== 'Connected') return;
@@ -311,7 +314,7 @@ const GroupChatScreen: React.FC = () => {
       )}
       renderSend={(sendProps) => (
         <Send {...sendProps} containerStyle={styles.sendButton}>
-          <IconSymbol size={24} name="send" color="#A08E67" />
+          <IconSymbol size={24} name="send" color={Colors.brightRed} />
         </Send>
       )}
     />
@@ -377,61 +380,83 @@ const GroupChatScreen: React.FC = () => {
         />
       ) : (
         <View style={styles.chatContainer}>
-       <GiftedChat
-        messages={messages}
-        onSend={onSend}
-        user={{
-          _id: Number(user?.userId) || 0,
-          name: user?.fullName || 'Unknown',
-          avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
-        }}
-        renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
-        onInputTextChanged={setEnteredText}
-        text={enteredText}
-        placeholder="Enter a message..."
-        renderMessage={renderMessage}
-        renderInputToolbar={renderInputToolbar}
-        inverted={true}
-      />
+          <GiftedChat
+            messages={messages}
+            onSend={onSend}
+            user={{
+              _id: Number(user?.userId) || 0,
+              name: user?.fullName || 'Unknown',
+              avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
+            }}
+            renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
+            onInputTextChanged={setEnteredText}
+            text={enteredText}
+            placeholder="Enter a message..."
+            renderMessage={renderMessage}
+            renderInputToolbar={renderInputToolbar}
+            inverted={true}
+          />
 
-      {/* Modal for TagStatusResponses */}
-      <Modal
-        visible={isTagModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsTagModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-       
-            {selectedTagId && (
-            <TagStatusResponses
+          {/* Modal for TagStatusResponses */}
+          {isTagModalVisible ? (
+            <Modal
+              visible={isTagModalVisible}
+              transparent
+              animationType="slide"
+              onRequestClose={() => setIsTagModalVisible(false)}>
+              <View style={styles.modalContainer}>
+                {selectedTagId && (
+                  <TagStatusResponses
                     tagId={selectedTagId}
-                            onClose={() => setIsTagModalVisible(false)} // Pass close function
-
+                    onClose={() => setIsTagModalVisible(false)} // Pass close function
+                  />
+                )}
+              </View>
+            </Modal>
+          ) : null}
+          {isTranslateBarVisible ? (
+            <TranslateBar
+              onTranslate={handleTranslate}
+              enteredText={enteredText}
+              setTranslatedText={setTranslatedText}
             />
-            )}
-        </View>
-      </Modal>
+          ) : null}
           <View style={styles.translateContainer}>
             <TouchableOpacity
               style={styles.translateButton}
-              onPress={() => setIsTagDialogVisible(true)}>
-              <IconSymbol size={24} name="poll" color="white" />
+              onPress={() => {
+                setIsTagDialogVisible(true);
+                setIsTranslateBarVisible(false);
+              }}>
+              {/* <IconSymbol size={24} name="poll" color="red" /> */}
+              <Fontisto
+                name="hashtag"
+                size={24}
+                color={isTagDialogVisible ? Colors.brightRed : Colors.blueColor}
+              />
 
               {/* <Text style={styles.translateText}>Translate</Text> */}
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.translateButton}
+              onPress={() => {
+                setIsTranslateBarVisible(!isTranslateBarVisible);
+                setIsTagDialogVisible(false);
+              }}>
+              <MaterialIcons
+                name="translate"
+                size={24}
+                color={isTranslateBarVisible ? Colors.brightRed : Colors.blueColor}
+              />
+            </TouchableOpacity>
           </View>
-          <TranslateBar
-            onTranslate={handleTranslate}
-            enteredText={enteredText}
-            setTranslatedText={setTranslatedText}
-          />
-          {translatedText && (
+
+          {/* {translatedText && (
             <>
               <Text style={styles.translatedText}>{translatedText}</Text>
               <AcceptButton onAccept={handleAcceptTranslation} />
             </>
-          )}
+          )} */}
         </View>
       )}
     </View>
@@ -441,7 +466,7 @@ const GroupChatScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fe',
+    backgroundColor: '#fff',
   },
   chatContainer: {
     flex: 1,
@@ -494,13 +519,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     justifyContent: 'center',
+    gap: 40,
   },
   translateButton: {
-    backgroundColor: '#A08E67',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginRight: 10,
+    // backgroundColor: '#A08E67',
+    // paddingVertical: 8,
+    // paddingHorizontal: 16,
+    // borderRadius: 20,
+    // marginRight: 10,
   },
   translateText: {
     color: '#FFF',
@@ -672,7 +698,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-
 });
 
 export default GroupChatScreen;

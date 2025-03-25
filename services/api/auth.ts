@@ -1,4 +1,5 @@
 // services/api/auth.ts
+import { AttachmentUploadResponse } from '@/app/ChatStack/chatScreen';
 import client from './client';
 import { ENDPOINTS } from './endpoints';
 import { handleSuccess, handleError } from './responseHandler';
@@ -111,6 +112,25 @@ export const uploadImage = async (uri: string) => {
   }
 };
 
+export const uploadFile = async (
+  uri: string,
+  fileName: string,
+  mimeType: string,
+): Promise<AttachmentUploadResponse> => {
+  const formData = new FormData();
+  formData.append('file', {
+    uri,
+    name: fileName,
+    type: mimeType,
+  } as any);
+  // Assume your API endpoint handles different file types
+  const response = await client.post(ENDPOINTS.uploadImage, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  console.log('response uploadFile', response);
+  return response.data;
+};
+
 export const getImageById = async (attachmentId: number) => {
   try {
     const response = await client.get(
@@ -168,5 +188,26 @@ export const getStatusResponses = async (tagId: number) => {
     return handleSuccess(response); // Handle successful response
   } catch (error) {
     handleError(error); // Handle error response
+  }
+};
+
+export const getFileById = async (attachmentId: number) => {
+  try {
+    const response = await client.get(
+      `${ENDPOINTS.getImage.replace('{id}', attachmentId.toString())}`,
+      { responseType: 'arraybuffer' },
+    );
+
+    const base64String = encode(response.data);
+    const mimeType = response.headers['content-type'] || 'application/octet-stream';
+    const fileName = response.headers['x-file-name'] || `file_${attachmentId}`; // Assume API returns filename
+
+    return {
+      uri: `data:${mimeType};base64,${base64String}`,
+      fileName,
+      fileType: mimeType,
+    };
+  } catch (error) {
+    handleError(error);
   }
 };

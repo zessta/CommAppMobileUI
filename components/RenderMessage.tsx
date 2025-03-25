@@ -57,23 +57,90 @@ const MessageContent = ({
 }) => (
   <View style={styles.messageContent}>
     <View style={[styles.bubble, isCurrentUser ? styles.bubbleRight : styles.bubbleLeft]}>
-      <Text style={[styles.bubbleText, { color: isCurrentUser ? '#FFF' : '#333' }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+        {/* If the current user, show the green dot at flex-start */}
+        {isCurrentUser ? (
+          <>
+            {tagName ? (
+              <View
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: 'green',
+                  marginRight: 8,
+                }}
+              />
+            ) : null}
+            <Text
+              style={{
+                fontWeight: '900',
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                color: '#234B89',
+              }}>
+              {currentMessage.user.name}
+            </Text>
+          </>
+        ) : (
+          // If it's not the current user, show the green dot at flex-end
+          <>
+            <Text
+              style={{
+                fontWeight: '900',
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                color: '#234B89',
+              }}>
+              {currentMessage.user.name}
+            </Text>
+            {tagName ? (
+              <View
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: 'green',
+                  marginLeft: 8,
+                }}
+              />
+            ) : null}
+          </>
+        )}
+      </View>
+      <Text style={[styles.bubbleText, { color: isCurrentUser ? '#1f1f1f' : '#333' }]}>
         {messageText}
       </Text>
-      {tagName && (
+      {/* {tagName && (
         <StatusTag
           tagName={tagName}
           currentMessage={currentMessage}
           handleStatusClick={handleStatusClick}
         />
-      )}
+      )} */}
     </View>
-    <Text style={styles.timestamp}>
-      {currentMessage.createdAt.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-      })}
-    </Text>
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: isCurrentUser ? 'flex-end' : 'flex-start',
+        gap: 5,
+      }}>
+      {tagName ? (
+        <TouchableOpacity>
+          <Text
+            style={{ fontSize: 14, fontWeight: '900', color: '#234B89', marginTop: 2 }}
+            onPress={() => handleStatusClick(currentMessage)}>
+            #{tagName}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+      <Text style={[styles.timestamp, { alignSelf: isCurrentUser ? 'flex-end' : 'flex-start' }]}>
+        {currentMessage.createdAt?.toLocaleTimeString?.([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+      </Text>
+    </View>
   </View>
 );
 
@@ -121,11 +188,12 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   bubbleLeft: {
-    backgroundColor: '#FFF',
+    backgroundColor: 'lightgrey',
     borderBottomLeftRadius: 0,
+    alignSelf: 'flex-start',
   },
   bubbleRight: {
-    backgroundColor: '#A08E67',
+    backgroundColor: '#F5F7FB',
     borderBottomRightRadius: 0,
     alignSelf: 'flex-end',
   },
@@ -163,6 +231,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#A08E67',
     marginTop: 2,
-    alignSelf: 'flex-end',
   },
 });

@@ -189,27 +189,36 @@ const AddMembersToGroup: React.FC<AddMembersToGroupProps> = ({
                   keyExtractor={(item) => item.userId.toString()}
                   style={styles.contactList}
                   ListEmptyComponent={
-                    !isLoading ? <Text style={styles.emptyText}>No contacts available</Text> : null
+                    !isLoading ? <Text style={styles.emptyText}>No members available</Text> : null
                   }
                 />
               </>
             )}
 
             <View style={styles.buttonContainer}>
-              <TouchableOpacity onPress={addMembersToGroup} disabled={isLoading}>
+              <TouchableOpacity
+                onPress={closeModal}
+                disabled={isLoading}
+                style={styles.buttonWrapper}>
                 <LinearGradient
-                  colors={['#4a90e2', '#357abd']}
+                  colors={['#ecf0f1', '#ecf0f1']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.cancelButton]}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={addMembersToGroup}
+                disabled={isLoading}
+                style={styles.buttonWrapper}>
+                <LinearGradient
+                  colors={['#234B89', '#234B89']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[styles.addButton, isLoading && styles.disabledButton]}>
                   <Text style={styles.buttonText}>{isLoading ? 'Adding...' : 'Add Members'}</Text>
                 </LinearGradient>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={closeModal}
-                disabled={isLoading}
-                style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -244,13 +253,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dialogTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700',
     color: '#2c3e50',
     marginBottom: 20,
   },
   label: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#34495e',
     marginBottom: 15,
@@ -284,41 +293,6 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
   },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-  },
-  addButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  cancelButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 12,
-    backgroundColor: '#ecf0f1',
-    borderWidth: 1,
-    borderColor: '#bdc3c7',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cancelButtonText: {
-    color: '#7f8c8d',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -336,6 +310,48 @@ const styles = StyleSheet.create({
     color: '#7f8c8d',
     textAlign: 'center',
     padding: 20,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between', // This ensures that both buttons have the same spacing between them
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    paddingHorizontal: 10, // Added horizontal padding for better spacing
+  },
+  buttonWrapper: {
+    flex: 1, // Ensure both buttons take up equal width
+    marginHorizontal: 5, // Add space between the buttons
+  },
+  addButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#ecf0f1',
+    borderWidth: 1,
+    borderColor: '#bdc3c7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    padding: 4,
+    textAlign: 'center',
+  },
+  cancelButtonText: {
+    color: '#7f8c8d',
+    fontSize: 16,
+    fontWeight: '600',
+    padding: 4,
   },
 });
 

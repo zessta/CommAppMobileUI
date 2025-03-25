@@ -20,7 +20,7 @@
       "package": "com.shivazessta.commApp",
       "permissions": [
         "android.permission.RECORD_AUDIO"
-      ]
+      ] 
     },
     "web": {
       "bundler": "metro",
@@ -51,6 +51,14 @@
           "color": "#ffffff",
           "defaultChannel": "default",
           "enableBackgroundRemoteNotifications": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
+          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos.",
+          "isAccessMediaLocationEnabled": true
         }
       ],
       "expo-localization"

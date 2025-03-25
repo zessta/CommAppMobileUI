@@ -17,6 +17,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSignalR } from '@/services/signalRService';
 import { v4 as uuidv4 } from 'uuid';
 import { SOCKET_URL } from '@/constants/Strings';
+import { Colors } from '@/constants/Colors';
 
 type GroupDetailsSearchParams = {
   group: string;
@@ -95,13 +96,13 @@ const GroupDetailsScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#A08E67" />
+          <Ionicons name="arrow-back" size={24} color={Colors.brightRed} />
         </TouchableOpacity>
         <View style={styles.header}>
           <View style={styles.groupIcon}>
             <Image
               source={{
-                uri: `https://ui-avatars.com/api/?background=A08E67&color=FFF&name=${groupInfo.groupName}`,
+                uri: `https://ui-avatars.com/api/?background=E5322D&color=FFF&name=${groupInfo.groupName}`,
               }}
               style={styles.profileImage}
             />
@@ -109,16 +110,16 @@ const GroupDetailsScreen: React.FC = () => {
           <Text style={styles.groupName}>{groupInfo.groupName}</Text>
           <View style={styles.actionIcons}>
             <TouchableOpacity onPress={handleSearchPress}>
-              <Ionicons name="search" size={30} color="#A08E67" />
+              <Ionicons name="search" size={30} color={Colors.brightRed} />
             </TouchableOpacity>
             <TouchableOpacity>
-              <Ionicons name="pricetag" size={30} color="#A08E67" />
+              <Ionicons name="pricetag" size={30} color={Colors.brightRed} />
             </TouchableOpacity>
             <TouchableOpacity>
-              <Ionicons name="person-add" size={30} color="#A08E67" />
+              <Ionicons name="person-add" size={30} color={Colors.brightRed} />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleDeleteGroup}>
-              <Ionicons name="trash" size={30} color="#A08E67" />
+              <Ionicons name="trash" size={30} color={Colors.brightRed} />
             </TouchableOpacity>
           </View>
         </View>
@@ -133,10 +134,9 @@ const GroupDetailsScreen: React.FC = () => {
             placeholderTextColor="#666"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            autoFocus={true}
           />
           <TouchableOpacity onPress={() => setSearchVisible(false)} style={styles.closeSearch}>
-            <Ionicons name="close" size={20} color="#A08E67" />
+            <Ionicons name="close" size={20} color={Colors.brightRed} />
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -149,10 +149,9 @@ const GroupDetailsScreen: React.FC = () => {
             placeholderTextColor="#666"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            autoFocus={true}
           />
           <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.closeSearch}>
-            <Ionicons name="close" size={20} color="#A08E67" />
+            <Ionicons name="close" size={20} color={Colors.brightRed} />
           </TouchableOpacity>
         </Animated.View>
         <FlatList
@@ -224,7 +223,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#A08E67',
+    backgroundColor: Colors.brightRed,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 5,
@@ -232,7 +231,7 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#000',
+    color: Colors.blueColor,
     marginBottom: 10,
   },
   actionIcons: {
@@ -281,7 +280,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#A08E67',
+    backgroundColor: Colors.brightRed,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -292,8 +291,9 @@ const styles = StyleSheet.create({
   },
   memberName: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 12,
     color: '#000',
+    fontWeight: 400,
   },
   emptyText: {
     textAlign: 'center',

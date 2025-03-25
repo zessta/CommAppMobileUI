@@ -1,20 +1,42 @@
 import { SOCKET_URL } from '@/constants/Strings';
 import { ChatDataProps, ChatMessageServer, ChatScreenProps, UserDTO } from '@/constants/Types';
-import { getImageById, getUsersChatHistory, uploadImage } from '@/services/api/auth';
+import { getFileById, getImageById, getUsersChatHistory, uploadFile } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import * as signalR from '@microsoft/signalr';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Composer, GiftedChat, IMessage, InputToolbar, Send } from 'react-native-gifted-chat';
+import {
+  Composer,
+  GiftedChat,
+  IMessage,
+  InputToolbar,
+  Send,
+  Bubble,
+} from 'react-native-gifted-chat';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 import { v4 as uuidv4 } from 'uuid';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
-// Define the interface for the API response (adjust based on your API)
-interface AttachmentUploadResponse {
+import * as Sharing from 'expo-sharing';
+import * as IntentLauncher from 'expo-intent-launcher'; // For opening downloaded files on Android
+import * as MediaLibrary from 'expo-media-library';
+import FileDownloader from '@/Utils/fileDownloader';
+import { Colors } from '@/constants/Colors';
+
+export interface AttachmentUploadResponse {
   attachmentId: number;
+  fileName?: string;
+  fileType?: string;
+}
+
+interface FileMessage extends IMessage {
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: string;
 }
 
 const ChatScreen: React.FC = () => {
@@ -26,8 +48,16 @@ const ChatScreen: React.FC = () => {
     : undefined;
   const [messages, setMessages] = useState<IMessage[]>([]);
   const connection = useSignalR(SOCKET_URL);
-
-  // Request permission to access the gallery
+  const requestPermissions = async () => {
+    if (Platform.OS === 'android') {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need permission to access your media library');
+        return false;
+      }
+    }
+    return true;
+  };
   useEffect(() => {
     (async () => {
       if (Platform.OS !== 'web') {
@@ -40,22 +70,30 @@ const ChatScreen: React.FC = () => {
         }
       }
     })();
+    requestPermissions();
   }, []);
 
   const handleIncomingMessage = useCallback(
     async (chatMes: ChatMessageServer, index: number, senderId: number, receiverId: number) => {
       const chatUserName: string =
         chatMes.senderId === senderId ? senderData?.fullName : receiverData.name;
-      const message: IMessage = {
+      const message: FileMessage = {
         _id: uuidv4(),
         text: chatMes.messageText,
         createdAt: Number(chatMes.createdOn),
         user: { _id: chatMes.senderId, name: chatUserName },
       };
+
       if (chatMes.attachmentId) {
-        const attachmentResponse = await getImageById(chatMes.attachmentId);
-        if (attachmentResponse) {
-          message.image = attachmentResponse;
+        const fileResponse = await getFileById(chatMes.attachmentId);
+        if (fileResponse) {
+          if (fileResponse.fileType.startsWith('image/')) {
+            message.image = fileResponse.uri;
+          } else {
+            message.fileUrl = fileResponse.uri;
+            message.fileName = fileResponse.fileName;
+            message.fileType = fileResponse.fileType;
+          }
         }
       }
       setMessages((prevMessages) => GiftedChat.append(prevMessages, [message]));
@@ -67,6 +105,7 @@ const ChatScreen: React.FC = () => {
     if (!connection) return;
     if (conversationId) {
       const userChatHistoryData: ChatMessageServer[] = await getUsersChatHistory(conversationId);
+      console.log('userChatHistoryData', userChatHistoryData);
       if (userChatHistoryData.length) {
         userChatHistoryData.reverse().forEach((chat: ChatMessageServer, index: number) => {
           handleIncomingMessage(chat, index, Number(senderData.userId), Number(receiverData.id));
@@ -75,35 +114,6 @@ const ChatScreen: React.FC = () => {
     }
     connection.on('ReceiveMessage', handleReceivedMessage);
   }, [connection, handleIncomingMessage, receiverData.id, senderData.userId, conversationId]);
-
-  const pickAndUploadImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 1,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      const uri: string = result.assets[0].uri;
-      const uploadImageResponse: AttachmentUploadResponse = await uploadImage(uri);
-      console.log('attachmentId', uploadImageResponse);
-      if (uploadImageResponse?.attachmentId) {
-        const newMessage: IMessage = {
-          _id: uuidv4(),
-          text: '',
-          createdAt: new Date(),
-          user: {
-            _id: Number(senderData.userId),
-            name: senderData?.fullName,
-            avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData?.fullName}`,
-          },
-          image: uri,
-        };
-        setMessages((prevMessages) => GiftedChat.append(prevMessages, [newMessage]));
-        sendMessage('', uploadImageResponse?.attachmentId);
-      }
-    }
-  };
 
   const onSend = useCallback(
     (newMessages: IMessage[] = []) => {
@@ -174,7 +184,129 @@ const ChatScreen: React.FC = () => {
     return null;
   };
 
-  // Custom renderInputToolbar with proper typing
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const asset = result.assets[0];
+      const uri = asset.uri;
+      const fileName = asset.fileName || uri.split('/').pop() || 'image.jpg';
+      const mimeType = asset.mimeType || 'image/jpeg';
+
+      await handleFileUpload(uri, fileName, mimeType);
+    }
+  };
+
+  const pickDocument = async () => {
+    const result: DocumentPicker.DocumentPickerResult = await DocumentPicker.getDocumentAsync({
+      type: '*/*',
+      copyToCacheDirectory: true,
+    });
+
+    if (!result.canceled) {
+      const { name, uri, mimeType } = result.assets[0];
+      const fileName = name || (uri ? uri.split('/').pop() : 'document');
+      const fileType = mimeType || 'application/octet-stream';
+
+      await handleFileUpload(uri, fileName!, fileType);
+    }
+  };
+
+  const handleFileUpload = async (uri: string, fileName: string, mimeType: string) => {
+    const uploadResponse: AttachmentUploadResponse = await uploadFile(uri, fileName, mimeType);
+    if (uploadResponse?.attachmentId) {
+      const newMessage: FileMessage = {
+        _id: uuidv4(),
+        text: '',
+        createdAt: new Date(),
+        user: {
+          _id: Number(senderData.userId),
+          name: senderData?.fullName,
+          avatar: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${senderData?.fullName}`,
+        },
+      };
+
+      if (mimeType.startsWith('image/')) {
+        newMessage.image = uri;
+      } else {
+        newMessage.fileUrl = uri;
+        newMessage.fileName = fileName;
+        newMessage.fileType = mimeType;
+      }
+
+      setMessages((prevMessages) => GiftedChat.append(prevMessages, [newMessage]));
+      sendMessage('', uploadResponse.attachmentId);
+    }
+  };
+
+  const downloadFile = async (base64String: string, fileName: string) => {
+    const files = [
+      {
+        url: base64String, // Base64 encoded file
+        name: fileName, // Name of the file (with extension)
+        mimeType: 'application/pdf', // MIME type for PDF file
+      },
+    ];
+    FileDownloader.downloadFilesAsync(files, (directoryChange) => {
+      console.log('Directory change:', directoryChange);
+    });
+  };
+
+  const renderMessage = (props: { currentMessage?: IMessage }) => {
+    const message = props.currentMessage as FileMessage;
+    const isOwnMessage = message?.user._id === Number(senderData.userId);
+
+    // File message rendering
+    if (message?.fileUrl && message?.fileName) {
+      return (
+        <View style={[styles.bubble, isOwnMessage ? styles.rightBubble : styles.leftBubble]}>
+          <TouchableOpacity
+            style={styles.fileContainer}
+            onPress={() => downloadFile(message.fileUrl!, message.fileName!)}>
+            <MaterialCommunityIcons
+              name="file-document"
+              size={24}
+              color={isOwnMessage ? '#fff' : '#000'}
+            />
+            <Text
+              style={[styles.fileName, { color: isOwnMessage ? '#fff' : '#000' }]}
+              numberOfLines={1}
+              ellipsizeMode="middle">
+              {message.fileName}
+            </Text>
+            <MaterialCommunityIcons
+              name="download"
+              size={24}
+              color={isOwnMessage ? '#fff' : '#000'}
+            />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Text/Image message rendering
+    return (
+      <Bubble
+        {...props}
+        wrapperStyle={{
+          right: styles.rightBubble,
+          left: styles.leftBubble,
+        }}
+        textStyle={{
+          right: { ...styles.messageText, color: '#fff' }, // White text for sent messages
+          left: styles.messageText,
+        }}
+        containerStyle={{
+          left: { marginBottom: 8 },
+          right: { marginBottom: 8 },
+        }}
+      />
+    );
+  };
   const renderInputToolbar = (props: React.ComponentProps<typeof InputToolbar>) => {
     return (
       <InputToolbar
@@ -182,9 +314,14 @@ const ChatScreen: React.FC = () => {
         containerStyle={styles.inputToolbar}
         renderComposer={(composerProps) => (
           <View style={styles.composerContainer}>
-            <TouchableOpacity onPress={pickAndUploadImage} style={styles.imageButton}>
-              <MaterialCommunityIcons name="paperclip" size={24} color="black" />
-            </TouchableOpacity>
+            <View style={styles.attachmentButtons}>
+              <TouchableOpacity onPress={pickImage} style={styles.imageButton}>
+                <MaterialCommunityIcons name="image" size={24} color={Colors.blueColor} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={pickDocument} style={styles.imageButton}>
+                <MaterialCommunityIcons name="file-document" size={24} color={Colors.blueColor} />
+              </TouchableOpacity>
+            </View>
             <Composer
               {...composerProps}
               textInputStyle={styles.textInput}
@@ -194,7 +331,7 @@ const ChatScreen: React.FC = () => {
         )}
         renderSend={(sendProps) => (
           <Send {...sendProps} containerStyle={styles.sendButton}>
-            <IconSymbol size={24} name="paperplane.fill" color="#000" />
+            <IconSymbol size={24} name="paperplane.fill" color={Colors.brightRed} />
           </Send>
         )}
       />
@@ -206,6 +343,7 @@ const ChatScreen: React.FC = () => {
       <Stack.Screen
         options={{
           title: receiverData.name,
+          headerTitleStyle: { fontSize: 16, fontWeight: 'bold' },
           headerLargeStyle: { backgroundColor: 'blue' },
           headerLeft: () => (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -216,11 +354,11 @@ const ChatScreen: React.FC = () => {
                   marginLeft: 10,
                 }}
                 onPress={() => router.back()}>
-                <IconSymbol size={28} name="arrow-back" color={'#A08E67'} />
+                <IconSymbol size={28} name="arrow-back" color={Colors.brightRed} />
               </TouchableOpacity>
               <Image
                 source={{
-                  uri: `https://ui-avatars.com/api/?background=000000&color=FFF&name=${receiverData.name}`,
+                  uri: `https://ui-avatars.com/api/?background=E5322D&color=FFF&name=${receiverData.name}`,
                 }}
                 style={{
                   width: 40,
@@ -245,6 +383,10 @@ const ChatScreen: React.FC = () => {
         }}
         renderFooter={renderFooter}
         renderInputToolbar={renderInputToolbar}
+        renderMessage={renderMessage}
+        showUserAvatar={true}
+        alwaysShowSend={true}
+        keyboardShouldPersistTaps="handled"
       />
     </View>
   );
@@ -270,7 +412,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     backgroundColor: '#f5f5f5',
-    borderTopWidth: 0, // Remove default border
+    borderTopWidth: 0,
   },
   composerContainer: {
     flexDirection: 'row',
@@ -295,6 +437,55 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 10,
+  },
+  fileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fileName: {
+    marginLeft: 10,
+    marginRight: 10,
+    fontSize: 16,
+    color: '#000',
+    flex: 1,
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    resizeMode: 'contain',
+    borderRadius: 8,
+  },
+  attachmentButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bubble: {
+    // marginLeft: 50,
+    marginVertical: 8, // Vertical spacing between messages
+    marginHorizontal: 12, // Horizontal margin from screen edges
+    width: '50%', // Limit bubble width
+    borderRadius: 16,
+    padding: 10,
+    elevation: 1, // Slight shadow for Android
+    shadowColor: '#000', // Shadow for iOS
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    alignSelf: 'flex-end',
+  },
+  rightBubble: {
+    backgroundColor: '#007AFF', // Blue for sent messages
+    marginLeft: 50,
+  },
+  leftBubble: {
+    backgroundColor: '#f0f0f0', // Light gray for received messages
+    marginRight: 50,
+  },
+  messageText: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#000',
   },
 });
 

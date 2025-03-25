@@ -107,7 +107,7 @@ const SendTagMessage = ({ setIsTagDialogVisible, onSend }: SendTagMessageProps) 
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradientBackground}>
-            <Text style={styles.dialogTitle}>Send Tag Message</Text>
+            <Text style={styles.dialogTitle}>Add Tag Message</Text>
 
             {/* Tag Selection */}
             <Text style={styles.label}>Select Tag</Text>
@@ -164,17 +164,6 @@ const SendTagMessage = ({ setIsTagDialogVisible, onSend }: SendTagMessageProps) 
               </TouchableOpacity>
             </View> */}
             <View style={styles.buttonContainer}>
-              {/* Send Button */}
-              <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
-                <LinearGradient
-                  colors={['#4a90e2', '#357abd']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.gradientButton}>
-                  <Text style={styles.buttonText}>Send</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
               {/* Cancel Button */}
               <TouchableOpacity onPress={closeModal} style={styles.sendButton}>
                 <LinearGradient
@@ -183,6 +172,16 @@ const SendTagMessage = ({ setIsTagDialogVisible, onSend }: SendTagMessageProps) 
                   end={{ x: 1, y: 1 }}
                   style={styles.cancelGradientButton}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              {/* Send Button */}
+              <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
+                <LinearGradient
+                  colors={['#234B89', '#234B89']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gradientButton}>
+                  <Text style={styles.buttonText}>Send</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -235,7 +234,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dialogTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
     color: '#2c3e50',
     marginBottom: 20,

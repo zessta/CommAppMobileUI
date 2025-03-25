@@ -12,8 +12,8 @@ interface StatusResponse {
   status: string;
 }
 interface TagStatusResponsesProps {
-  tagId: string; 
-  onClose: () => void; 
+  tagId: string;
+  onClose: () => void;
 }
 
 // Status Item Component
@@ -32,7 +32,7 @@ const StatusItem: React.FC<{ item: StatusResponse }> = ({ item }) => {
 };
 
 // Main Component
-const TagStatusResponses: React.FC<TagStatusResponsesProps> = ({ tagId,onClose })=> {
+const TagStatusResponses: React.FC<TagStatusResponsesProps> = ({ tagId, onClose }) => {
   const [statusResponses, setStatusResponses] = useState<StatusResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
@@ -58,7 +58,6 @@ const TagStatusResponses: React.FC<TagStatusResponsesProps> = ({ tagId,onClose }
     }
   };
 
-
   const handleBackPress = () => {
     router.back();
   };
@@ -68,22 +67,28 @@ const TagStatusResponses: React.FC<TagStatusResponsesProps> = ({ tagId,onClose }
       {/* Close Button */}
       <Text style={styles.headerTitle}>Tag Responses</Text>
 
-      <TouchableOpacity onPress={onClose}  style={{ position: 'absolute', top: 10, right: 10, zIndex: 1 }}>
-      <Ionicons name="close" size={24} color="#A08E67" />
+      <TouchableOpacity
+        onPress={onClose}
+        style={{ position: 'absolute', top: 10, right: 10, zIndex: 1 }}>
+        <Ionicons name="close" size={24} color="#A08E67" />
       </TouchableOpacity>
 
       {/* White Container for FlatList */}
-      <View style={[styles.listContainer, { flex: 1, margin: 0, borderTopLeftRadius: 10, borderTopRightRadius: 10 }]}>
-      {loading ? (
-      <Loader loadingText="Loading responses..." />
-      ) : (
-      <FlatList
-      data={statusResponses}
-      keyExtractor={(item) => item.userId.toString()}
-      renderItem={({ item }) => <StatusItem item={item} />}
-      ListEmptyComponent={<Text style={styles.noResponsesText}>No responses found</Text>}
-      />
-      )}
+      <View
+        style={[
+          styles.listContainer,
+          { flex: 1, margin: 0, borderTopLeftRadius: 10, borderTopRightRadius: 10 },
+        ]}>
+        {loading ? (
+          <Loader loadingText="Loading responses..." />
+        ) : (
+          <FlatList
+            data={statusResponses}
+            keyExtractor={(item) => item.userId.toString()}
+            renderItem={({ item }) => <StatusItem item={item} />}
+            ListEmptyComponent={<Text style={styles.noResponsesText}>No responses found</Text>}
+          />
+        )}
       </View>
     </View>
   );
@@ -96,14 +101,15 @@ const styles = StyleSheet.create({
     width: '80%',
     marginHorizontal: 15,
     borderRadius: 10,
-    backgroundColor: '#f5f7fe', 
+    backgroundColor: '#f5f7fe',
     elevation: 5,
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 10,
     padding: 15,
-    top:10
-  },  header: {
+    top: 10,
+  },
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -128,6 +134,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
+    marginTop: 10,
   },
   statusItem: {
     flexDirection: 'row',

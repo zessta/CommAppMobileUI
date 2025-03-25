@@ -19,6 +19,7 @@ import { getLastChatHistory } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import { formattedTimeString } from '@/Utils/utils';
 import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/Colors';
 
 // Interface for chat item props
 interface ChatItemProps {
@@ -32,7 +33,7 @@ const ChatItem: React.FC<ChatItemProps> = ({ item, onPress, user }) => {
   return (
     <TouchableOpacity style={styles.chatItem} onPress={onPress}>
       <View style={styles.avatarContainer}>
-        <Ionicons name="person-circle" size={40} color="#d4af37" />
+        <Ionicons name="person-circle" size={40} color={Colors.blueColor} />
       </View>
       <View style={styles.textContainer}>
         <Text style={styles.userName}>{item.participants[0].userName}</Text>
@@ -61,6 +62,7 @@ const ChatListScreen = () => {
   const joinChat = useCallback(async () => {
     try {
       const usersLastChatHistory: ChatConversationType[] = await getLastChatHistory(user?.userId!);
+      console.log('usersLastChatHistory', usersLastChatHistory);
       const filterOutGroups = usersLastChatHistory.filter((chat) => chat.groupId === null);
       setUserChatHistory(filterOutGroups);
       setLoading(false);
@@ -152,7 +154,7 @@ const ChatListScreen = () => {
       <View style={styles.header}>
         {isSearchVisible ? (
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#A08E67" style={styles.searchIcon} />
+            <Ionicons name="search" size={20} color={Colors.brightRed} style={styles.searchIcon} />
             <TextInput
               style={styles.searchBar}
               placeholder="Search by name or message"
@@ -162,7 +164,7 @@ const ChatListScreen = () => {
               autoFocus={true}
             />
             <TouchableOpacity onPress={toggleSearchBar}>
-              <Ionicons name="close" size={20} color="#A08E67" style={styles.clearIcon} />
+              <Ionicons name="close" size={20} color={Colors.brightRed} style={styles.clearIcon} />
             </TouchableOpacity>
           </View>
         ) : (
@@ -170,11 +172,11 @@ const ChatListScreen = () => {
             <Text style={styles.headerTitle}>Chats</Text>
             <View style={styles.iconContainer}>
               <TouchableOpacity onPress={toggleSearchBar}>
-                <Ionicons name="search" size={24} color="#A08E67" />
+                <Ionicons name="search" size={24} color={Colors.brightRed} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleMenuPress}>
-                <Ionicons name="ellipsis-vertical" size={24} color="#A08E67" />
-              </TouchableOpacity>
+              {/* <TouchableOpacity onPress={handleMenuPress}>
+                <Ionicons name="ellipsis-vertical" size={24} color={Colors.brightRed} />
+              </TouchableOpacity> */}
             </View>
           </>
         )}
@@ -218,7 +220,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#000',
   },
@@ -279,7 +281,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 12,
-    color: '#A08E67',
+    color: Colors.brightRed,
     textAlign: 'right',
   },
   noContactsText: {

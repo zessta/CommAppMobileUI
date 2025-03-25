@@ -17,6 +17,7 @@ import { ChatConversationType, UserDTO } from '@/constants/Types';
 import { getLastChatHistory, getUserList } from '@/services/api/auth';
 import { router, useFocusEffect } from 'expo-router';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { Colors } from '@/constants/Colors';
 
 // Interface for contact item props
 interface ContactItemProps {
@@ -146,7 +147,7 @@ const ContactScreen = () => {
       <View style={styles.header}>
         {isSearchVisible ? (
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#A08E67" style={styles.searchIcon} />
+            <Ionicons name="search" size={20} color={Colors.brightRed} style={styles.searchIcon} />
             <TextInput
               style={styles.searchBar}
               placeholder="Search by name"
@@ -156,22 +157,27 @@ const ContactScreen = () => {
               autoFocus={true}
             />
             <TouchableOpacity onPress={toggleSearchBar}>
-              <Ionicons name="close" size={20} color="#A08E67" style={styles.clearIcon} />
+              <Ionicons name="close" size={20} color={Colors.brightRed} style={styles.clearIcon} />
             </TouchableOpacity>
           </View>
         ) : (
           <>
             <TouchableOpacity onPress={handleBackPress}>
-              <Ionicons name="arrow-back" size={24} color="#A08E67" style={styles.backIcon} />
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={Colors.brightRed}
+                style={styles.backIcon}
+              />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Contacts</Text>
             <View style={styles.iconContainer}>
               <TouchableOpacity onPress={toggleSearchBar}>
-                <Ionicons name="search" size={24} color="#A08E67" />
+                <Ionicons name="search" size={24} color={Colors.brightRed} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleMenuPress}>
-                <Ionicons name="ellipsis-vertical" size={24} color="#A08E67" />
-              </TouchableOpacity>
+              {/* <TouchableOpacity onPress={handleMenuPress}>
+                <Ionicons name="ellipsis-vertical" size={24} color={Colors.brightRed} />
+              </TouchableOpacity> */}
             </View>
           </>
         )}
@@ -228,7 +234,7 @@ const styles = StyleSheet.create({
     marginRight: 10, // Add spacing between back icon and title
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#000',
     fontFamily: 'Poppins',
