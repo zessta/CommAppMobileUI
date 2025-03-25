@@ -50,6 +50,7 @@ async function registerForPushNotificationsAsync() {
         ).data;
         console.log('expo token: ', pushTokenString);
         setExpoPushToken(pushTokenString);
+        return pushTokenString;
       } catch (e: unknown) {
         handleRegistrationError(`${e}`);
       }
