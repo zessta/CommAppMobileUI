@@ -259,52 +259,77 @@ const ChatScreen: React.FC = () => {
   const renderMessage = (props: { currentMessage?: IMessage }) => {
     const message = props.currentMessage as FileMessage;
     const isOwnMessage = message?.user._id === Number(senderData.userId);
+    const messageTime = new Date(message?.createdAt || Date.now()).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
     // File message rendering
     if (message?.fileUrl && message?.fileName) {
       return (
-        <View style={[styles.bubble, isOwnMessage ? styles.rightBubble : styles.leftBubble]}>
-          <TouchableOpacity
-            style={styles.fileContainer}
-            onPress={() => downloadFile(message.fileUrl!, message.fileName!)}>
-            <MaterialCommunityIcons
-              name="file-document"
-              size={24}
-              color={isOwnMessage ? '#fff' : '#000'}
-            />
+        <View
+          style={[
+            styles.bubbleContainer,
+            isOwnMessage ? styles.rightContainer : styles.leftContainer,
+          ]}>
+          <View style={[styles.bubble, isOwnMessage ? styles.rightBubble : styles.leftBubble]}>
             <Text
-              style={[styles.fileName, { color: isOwnMessage ? '#fff' : '#000' }]}
+              style={[styles.fileName, { color: Colors.blueColor }]}
               numberOfLines={1}
               ellipsizeMode="middle">
               {message.fileName}
             </Text>
-            <MaterialCommunityIcons
-              name="download"
-              size={24}
-              color={isOwnMessage ? '#fff' : '#000'}
-            />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.fileContainer}
+              onPress={() => downloadFile(message.fileUrl!, message.fileName!)}>
+              <MaterialCommunityIcons
+                name="file-document"
+                size={24}
+                color={isOwnMessage ? Colors.blueColor : Colors.blueColor}
+              />
+
+              <MaterialCommunityIcons
+                name="download"
+                size={24}
+                color={isOwnMessage ? Colors.blueColor : Colors.blueColor}
+              />
+            </TouchableOpacity>
+            <Text style={[styles.timestamp, { color: Colors.blueColor }]}>{messageTime}</Text>
+          </View>
+          {/* Add tail for file messages */}
+          {/* <View style={isOwnMessage ? styles.rightTail : styles.leftTail} /> */}
         </View>
       );
     }
 
     // Text/Image message rendering
     return (
-      <Bubble
-        {...props}
-        wrapperStyle={{
-          right: styles.rightBubble,
-          left: styles.leftBubble,
-        }}
-        textStyle={{
-          right: { ...styles.messageText, color: '#fff' }, // White text for sent messages
-          left: styles.messageText,
-        }}
-        containerStyle={{
-          left: { marginBottom: 8 },
-          right: { marginBottom: 8 },
-        }}
-      />
+      <View
+        style={[
+          styles.bubbleContainer,
+          isOwnMessage ? styles.rightContainer : styles.leftContainer,
+        ]}>
+        <View style={[styles.bubble, isOwnMessage ? styles.rightBubble : styles.leftBubble]}>
+          <Bubble
+            {...props}
+            wrapperStyle={{
+              right: { backgroundColor: 'transparent' }, // We'll handle background in styles.rightBubble
+              left: { backgroundColor: 'transparent' }, // We'll handle background in styles.leftBubble
+            }}
+            textStyle={{
+              right: styles.messageTextRight,
+              left: styles.messageTextLeft,
+            }}
+            containerStyle={{
+              left: {},
+              right: {},
+            }}
+          />
+          <Text style={[styles.timestamp, { color: Colors.blueColor }]}>{messageTime}</Text>
+        </View>
+        {/* Add tail for text/image messages */}
+        {/* <View style={isOwnMessage ? styles.rightTail : styles.leftTail} /> */}
+      </View>
     );
   };
   const renderInputToolbar = (props: React.ComponentProps<typeof InputToolbar>) => {
@@ -391,7 +416,6 @@ const ChatScreen: React.FC = () => {
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -438,18 +462,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
   },
-  fileContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  fileName: {
-    marginLeft: 10,
-    marginRight: 10,
-    fontSize: 16,
-    color: '#000',
-    flex: 1,
-  },
   messageImage: {
     width: 200,
     height: 200,
@@ -460,32 +472,92 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  bubble: {
-    // marginLeft: 50,
-    marginVertical: 8, // Vertical spacing between messages
-    marginHorizontal: 12, // Horizontal margin from screen edges
-    width: '50%', // Limit bubble width
-    borderRadius: 16,
-    padding: 10,
-    elevation: 1, // Slight shadow for Android
-    shadowColor: '#000', // Shadow for iOS
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-    alignSelf: 'flex-end',
-  },
-  rightBubble: {
-    backgroundColor: '#007AFF', // Blue for sent messages
-    marginLeft: 50,
-  },
-  leftBubble: {
-    backgroundColor: '#f0f0f0', // Light gray for received messages
-    marginRight: 50,
-  },
   messageText: {
     fontSize: 16,
     lineHeight: 22,
     color: '#000',
+  },
+  bubbleContainer: {
+    marginVertical: 6,
+    marginHorizontal: 12,
+    maxWidth: '75%',
+  },
+  leftContainer: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row', // For tail alignment
+  },
+  rightContainer: {
+    alignSelf: 'flex-end',
+    flexDirection: 'row-reverse', // For tail alignment
+  },
+  bubble: {
+    padding: 6, // Reduced from 10 to 6 to decrease height
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+  },
+  rightBubble: {
+    backgroundColor: '#F5F7FB', // WhatsApp green for sent messages
+    borderTopRightRadius: 2, // Sharp corner on the right for sent messages
+  },
+  leftBubble: {
+    backgroundColor: 'lightgrey', // White for received messages
+    borderTopLeftRadius: 2, // Sharp corner on the left for received messages
+  },
+  messageTextRight: {
+    fontSize: 16,
+    lineHeight: 20, // Reduced from 22 to 20 to make text more compact
+    color: '#000',
+  },
+  messageTextLeft: {
+    fontSize: 16,
+    lineHeight: 20, // Reduced from 22 to 20 to make text more compact
+    color: '#000',
+  },
+  timestamp: {
+    fontSize: 11,
+    marginTop: 2, // Reduced from 4 to 2 to decrease spacing
+    alignSelf: 'flex-end',
+    color: Colors.blueColor,
+  },
+  fileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  fileName: {
+    // marginLeft: 10,
+    // marginRight: 10,
+    fontSize: 16,
+    flex: 1,
+    fontWeight: 400,
+  },
+  // Tail styles for WhatsApp-like effect
+  leftTail: {
+    width: 0,
+    height: 0,
+    borderTopWidth: 10,
+    borderTopColor: 'transparent',
+    borderRightWidth: 10,
+    borderRightColor: '#FFFFFF', // Match left bubble color
+    borderBottomWidth: 10,
+    borderBottomColor: 'transparent',
+    marginLeft: -1, // Adjust to align with bubble
+  },
+  rightTail: {
+    width: 0,
+    height: 0,
+    borderTopWidth: 10,
+    borderTopColor: 'transparent',
+    borderLeftWidth: 10,
+    borderLeftColor: '#DCF8C6', // Match right bubble color
+    borderBottomWidth: 10,
+    borderBottomColor: 'transparent',
+    marginRight: -1, // Adjust to align with bubble
   },
 });
 
