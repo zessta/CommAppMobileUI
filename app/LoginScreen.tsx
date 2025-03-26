@@ -1,6 +1,7 @@
 import LoginImage from '@/assets/svgs/LoginImage';
 import ScreenLoader from '@/components/ScreenLoader';
 import { useUser } from '@/components/UserContext';
+import { Colors } from '@/constants/Colors';
 import { CHAT_TEST_DATA } from '@/constants/Strings';
 import { useIsNavigationReady } from '@/hooks/useIsNavigationReady';
 import { useNotification } from '@/hooks/useNotification';
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   button: {
-    backgroundColor: '#6B46C1',
+    backgroundColor: Colors.blueColor,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',

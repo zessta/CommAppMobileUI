@@ -3,7 +3,6 @@ import Checkbox from 'expo-checkbox';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import Translator from 'react-native-translator';
 
 const TranslateBar = ({
   onTranslate,
@@ -28,14 +27,18 @@ const TranslateBar = ({
     [],
   );
 
+  const isTranslateDisabled = useMemo(
+    () => !isTeluguChecked && !isHindiChecked,
+    [isTeluguChecked, isHindiChecked],
+  );
+
   const handleLangChange = useCallback(
     (lang: string) => {
-      // When a language is unchecked, return entered text to onTranslate
       if (lang === 'te') {
         if (isTeluguChecked) {
           setIsTeluguChecked(false);
           setTransLang('');
-          onTranslate(enteredText); // Return enteredText when no language is selected
+          onTranslate(enteredText);
         } else {
           setIsTeluguChecked(true);
           setIsHindiChecked(false);
@@ -45,7 +48,7 @@ const TranslateBar = ({
         if (isHindiChecked) {
           setIsHindiChecked(false);
           setTransLang('');
-          onTranslate(enteredText); // Return enteredText when no language is selected
+          onTranslate(enteredText);
         } else {
           setIsHindiChecked(true);
           setIsTeluguChecked(false);
@@ -63,7 +66,7 @@ const TranslateBar = ({
   }, [enteredText, transLang]);
 
   const handleTranslateButtonPress = useCallback(async () => {
-    if (!enteredText || enteredText === 'Enter a URL') return;
+    if (!enteredText || enteredText === 'Enter a URL' || isTranslateDisabled) return;
 
     setLoading(true);
 
@@ -78,8 +81,8 @@ const TranslateBar = ({
             {
               type: 'text',
               text: `You are given text in English. Please translate it into ${transLang === 'te' ? 'Telugu' : 'Hindi'}. 
-                     Keep the translation simple. Do not return anything else. 
-                     This is the text: ${enteredText}`,
+                   Keep the translation simple. Do not return anything else. 
+                   This is the text: ${enteredText}`,
             },
           ],
         },
@@ -103,6 +106,7 @@ const TranslateBar = ({
 
       if (response.ok) {
         const responseData = await response.json();
+        console.log('Response:responseDataresponseData', responseData);
         const extractedText = responseData.choices[0].message.content;
         console.log('extractedText', extractedText);
         setTranslatedText(extractedText);
@@ -115,7 +119,7 @@ const TranslateBar = ({
     } finally {
       setLoading(false);
     }
-  }, [enteredText, transLang, onTranslate, setTranslatedText]);
+  }, [enteredText, transLang, onTranslate, setTranslatedText, isTranslateDisabled]);
 
   return (
     <Animated.View entering={FadeIn} exiting={FadeOut}>
@@ -137,7 +141,14 @@ const TranslateBar = ({
 
         {/* Translate Button Section */}
         <View style={styles.translateButtonContainer}>
-          <TouchableOpacity style={styles.translateButton} onPress={handleTranslateButtonPress}>
+          <TouchableOpacity
+            style={[
+              styles.translateButton,
+              isTranslateDisabled && styles.translateButtonDisabled, // Apply disabled style if no checkbox is checked
+            ]}
+            onPress={handleTranslateButtonPress}
+            disabled={isTranslateDisabled} // Disable the button if no checkbox is checked
+          >
             {loading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
@@ -145,16 +156,6 @@ const TranslateBar = ({
             )}
           </TouchableOpacity>
         </View>
-
-        {/* Commented out Translator Component */}
-        {/* {enteredText && (
-          <Translator
-            from="en"
-            to={transLang}
-            value={enteredText}
-            onTranslated={(t) => setResult(t)}
-          />
-        )} */}
       </View>
     </Animated.View>
   );
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
   languageContainer: {
     flexDirection: 'row',
     justifyContent: 'space-evenly',
-    width: '50%', // This ensures the checkboxes take up 50% of the container width
+    width: '50%',
   },
   checkboxRow: {
     flexDirection: 'row',
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   translateButtonContainer: {
-    width: '50%', // This ensures the translate button takes up the remaining 50% of the container width
+    width: '50%',
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
   },
@@ -210,6 +211,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 6.3,
     alignSelf: 'flex-end',
+  },
+  translateButtonDisabled: {
+    backgroundColor: '#B0B0B0', // Grey color when disabled
   },
   translateText: {
     color: '#FFF',

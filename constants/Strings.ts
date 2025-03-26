@@ -1,11 +1,13 @@
 import { ChatDataProps } from './Types';
 
 // export const SOCKET_URL = 'http://10.0.2.2:5162/signalrtc';
-export const SOCKET_URL = 'https://ibcommappbackenddev-a0ecg3ghh7haabb2.southindia-01.azurewebsites.net/signalrtc';
+export const SOCKET_URL =
+  'https://ibcommappbackenddev-a0ecg3ghh7haabb2.southindia-01.azurewebsites.net/signalrtc';
 // export const SOCKET_URL = 'http://127.0.0.1:5162/signalrtc';
 
 // export const BASE_URL = 'http://10.0.2.2:5162';
-export const BASE_URL = "https://ibcommappbackenddev-a0ecg3ghh7haabb2.southindia-01.azurewebsites.net";
+export const BASE_URL =
+  'https://ibcommappbackenddev-a0ecg3ghh7haabb2.southindia-01.azurewebsites.net';
 // export const BASE_URL = 'http://127.0.0.1:5162';
 
 export const USER_CONTEXT: ChatDataProps = {

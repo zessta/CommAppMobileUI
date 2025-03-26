@@ -6,7 +6,16 @@ import * as signalR from '@microsoft/signalr';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from 'react-native';
 import {
   Composer,
   GiftedChat,
@@ -20,9 +29,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-
 import * as Sharing from 'expo-sharing';
-import * as IntentLauncher from 'expo-intent-launcher'; // For opening downloaded files on Android
+import * as IntentLauncher from 'expo-intent-launcher';
 import * as MediaLibrary from 'expo-media-library';
 import FileDownloader from '@/Utils/fileDownloader';
 import { Colors } from '@/constants/Colors';
@@ -47,7 +55,9 @@ const ChatScreen: React.FC = () => {
     ? Number(JSON.parse(searchParams?.conversationId))
     : undefined;
   const [messages, setMessages] = useState<IMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // New loading state
   const connection = useSignalR(SOCKET_URL);
+
   const requestPermissions = async () => {
     if (Platform.OS === 'android') {
       const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -58,6 +68,7 @@ const ChatScreen: React.FC = () => {
     }
     return true;
   };
+
   useEffect(() => {
     (async () => {
       if (Platform.OS !== 'web') {
@@ -69,8 +80,8 @@ const ChatScreen: React.FC = () => {
           );
         }
       }
+      requestPermissions();
     })();
-    requestPermissions();
   }, []);
 
   const handleIncomingMessage = useCallback(
@@ -103,16 +114,23 @@ const ChatScreen: React.FC = () => {
 
   const setupConnection = useCallback(async () => {
     if (!connection) return;
-    if (conversationId) {
-      const userChatHistoryData: ChatMessageServer[] = await getUsersChatHistory(conversationId);
-      console.log('userChatHistoryData', userChatHistoryData);
-      if (userChatHistoryData.length) {
-        userChatHistoryData.reverse().forEach((chat: ChatMessageServer, index: number) => {
-          handleIncomingMessage(chat, index, Number(senderData.userId), Number(receiverData.id));
-        });
+    setIsLoading(true); // Start loading
+    try {
+      if (conversationId) {
+        const userChatHistoryData: ChatMessageServer[] = await getUsersChatHistory(conversationId);
+        console.log('userChatHistoryData', userChatHistoryData);
+        if (userChatHistoryData.length) {
+          userChatHistoryData.reverse().forEach((chat: ChatMessageServer, index: number) => {
+            handleIncomingMessage(chat, index, Number(senderData.userId), Number(receiverData.id));
+          });
+        }
       }
+      connection.on('ReceiveMessage', handleReceivedMessage);
+    } catch (error) {
+      console.error('Error setting up connection:', error);
+    } finally {
+      setIsLoading(false); // Stop loading once messages are loaded or an error occurs
     }
-    connection.on('ReceiveMessage', handleReceivedMessage);
   }, [connection, handleIncomingMessage, receiverData.id, senderData.userId, conversationId]);
 
   const onSend = useCallback(
@@ -153,8 +171,18 @@ const ChatScreen: React.FC = () => {
       };
       if (attachmentId) {
         const attachmentResponse = await getImageById(attachmentId);
+        console.log('Received image URI:', attachmentResponse); // Debug the response
         if (attachmentResponse) {
-          newMessage.image = attachmentResponse;
+          if (typeof attachmentResponse === 'string' && attachmentResponse.startsWith('data:')) {
+            newMessage.image = attachmentResponse; // Already formatted base64
+          } else if (
+            typeof attachmentResponse === 'string' &&
+            !attachmentResponse.startsWith('http')
+          ) {
+            newMessage.image = `data:image/jpeg;base64,${attachmentResponse}`; // Assume base64 without prefix
+          } else {
+            newMessage.image = attachmentResponse; // Assume it's a valid URL
+          }
         }
       }
       setMessages((prevMessages) => GiftedChat.append(prevMessages, [newMessage]));
@@ -174,7 +202,7 @@ const ChatScreen: React.FC = () => {
   }, [connection, setupConnection, handleReceivedMessage]);
 
   const renderFooter = () => {
-    if (messages.length === 0) {
+    if (messages.length === 0 && !isLoading) {
       return (
         <View style={styles.placeholderContainer}>
           <Text style={styles.placeholderText}>Send a message to start the conversation</Text>
@@ -242,7 +270,6 @@ const ChatScreen: React.FC = () => {
       sendMessage('', uploadResponse.attachmentId);
     }
   };
-
   const downloadFile = async (base64String: string, fileName: string) => {
     const files = [
       {
@@ -255,7 +282,6 @@ const ChatScreen: React.FC = () => {
       console.log('Directory change:', directoryChange);
     });
   };
-
   const renderMessage = (props: { currentMessage?: IMessage }) => {
     const message = props.currentMessage as FileMessage;
     const isOwnMessage = message?.user._id === Number(senderData.userId);
@@ -264,7 +290,6 @@ const ChatScreen: React.FC = () => {
       minute: '2-digit',
     });
 
-    // File message rendering
     if (message?.fileUrl && message?.fileName) {
       return (
         <View
@@ -287,7 +312,6 @@ const ChatScreen: React.FC = () => {
                 size={24}
                 color={isOwnMessage ? Colors.blueColor : Colors.blueColor}
               />
-
               <MaterialCommunityIcons
                 name="download"
                 size={24}
@@ -296,13 +320,10 @@ const ChatScreen: React.FC = () => {
             </TouchableOpacity>
             <Text style={[styles.timestamp, { color: Colors.blueColor }]}>{messageTime}</Text>
           </View>
-          {/* Add tail for file messages */}
-          {/* <View style={isOwnMessage ? styles.rightTail : styles.leftTail} /> */}
         </View>
       );
     }
 
-    // Text/Image message rendering
     return (
       <View
         style={[
@@ -310,28 +331,32 @@ const ChatScreen: React.FC = () => {
           isOwnMessage ? styles.rightContainer : styles.leftContainer,
         ]}>
         <View style={[styles.bubble, isOwnMessage ? styles.rightBubble : styles.leftBubble]}>
-          <Bubble
-            {...props}
-            wrapperStyle={{
-              right: { backgroundColor: 'transparent' }, // We'll handle background in styles.rightBubble
-              left: { backgroundColor: 'transparent' }, // We'll handle background in styles.leftBubble
-            }}
-            textStyle={{
-              right: styles.messageTextRight,
-              left: styles.messageTextLeft,
-            }}
-            containerStyle={{
-              left: {},
-              right: {},
-            }}
-          />
+          {message?.image ? (
+            <Image
+              source={{ uri: message.image }}
+              style={styles.messageImage}
+              resizeMode="contain"
+              onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+            />
+          ) : (
+            <Bubble
+              {...props}
+              wrapperStyle={{
+                right: { backgroundColor: 'transparent' },
+                left: { backgroundColor: 'transparent' },
+              }}
+              textStyle={{
+                right: styles.messageTextRight,
+                left: styles.messageTextLeft,
+              }}
+            />
+          )}
           <Text style={[styles.timestamp, { color: Colors.blueColor }]}>{messageTime}</Text>
         </View>
-        {/* Add tail for text/image messages */}
-        {/* <View style={isOwnMessage ? styles.rightTail : styles.leftTail} /> */}
       </View>
     );
   };
+
   const renderInputToolbar = (props: React.ComponentProps<typeof InputToolbar>) => {
     return (
       <InputToolbar
@@ -410,6 +435,7 @@ const ChatScreen: React.FC = () => {
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
@@ -429,6 +455,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: Colors.blueColor,
   },
   placeholderContainer: {
     padding: 10,
@@ -481,11 +517,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  messageText: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: '#000',
-  },
   bubbleContainer: {
     marginVertical: 6,
     marginHorizontal: 12,
@@ -493,14 +524,14 @@ const styles = StyleSheet.create({
   },
   leftContainer: {
     alignSelf: 'flex-start',
-    flexDirection: 'row', // For tail alignment
+    flexDirection: 'row',
   },
   rightContainer: {
     alignSelf: 'flex-end',
-    flexDirection: 'row-reverse', // For tail alignment
+    flexDirection: 'row-reverse',
   },
   bubble: {
-    padding: 6, // Reduced from 10 to 6 to decrease height
+    padding: 6,
     borderRadius: 10,
     elevation: 2,
     shadowColor: '#000',
@@ -509,26 +540,26 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   rightBubble: {
-    backgroundColor: '#F5F7FB', // WhatsApp green for sent messages
-    borderTopRightRadius: 2, // Sharp corner on the right for sent messages
+    backgroundColor: '#F5F7FB',
+    borderTopRightRadius: 2,
   },
   leftBubble: {
-    backgroundColor: 'lightgrey', // White for received messages
-    borderTopLeftRadius: 2, // Sharp corner on the left for received messages
+    backgroundColor: 'lightgrey',
+    borderTopLeftRadius: 2,
   },
   messageTextRight: {
     fontSize: 16,
-    lineHeight: 20, // Reduced from 22 to 20 to make text more compact
+    lineHeight: 20,
     color: '#000',
   },
   messageTextLeft: {
     fontSize: 16,
-    lineHeight: 20, // Reduced from 22 to 20 to make text more compact
+    lineHeight: 20,
     color: '#000',
   },
   timestamp: {
     fontSize: 11,
-    marginTop: 2, // Reduced from 4 to 2 to decrease spacing
+    marginTop: 2,
     alignSelf: 'flex-end',
     color: Colors.blueColor,
   },
@@ -539,34 +570,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   fileName: {
-    // marginLeft: 10,
-    // marginRight: 10,
     fontSize: 16,
     flex: 1,
-    fontWeight: 400,
-  },
-  // Tail styles for WhatsApp-like effect
-  leftTail: {
-    width: 0,
-    height: 0,
-    borderTopWidth: 10,
-    borderTopColor: 'transparent',
-    borderRightWidth: 10,
-    borderRightColor: '#FFFFFF', // Match left bubble color
-    borderBottomWidth: 10,
-    borderBottomColor: 'transparent',
-    marginLeft: -1, // Adjust to align with bubble
-  },
-  rightTail: {
-    width: 0,
-    height: 0,
-    borderTopWidth: 10,
-    borderTopColor: 'transparent',
-    borderLeftWidth: 10,
-    borderLeftColor: '#DCF8C6', // Match right bubble color
-    borderBottomWidth: 10,
-    borderBottomColor: 'transparent',
-    marginRight: -1, // Adjust to align with bubble
+    fontWeight: '400',
   },
 });
 
