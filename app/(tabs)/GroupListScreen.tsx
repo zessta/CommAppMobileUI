@@ -118,7 +118,12 @@ const GroupListScreen = () => {
   };
 
   const handleBackPress = () => {
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      // Redirect to a fallback screen if no previous screen exists
+      router.push('/(tabs)/chatListScreen'); // Or any fallback screen
+    }
   };
 
   const toggleSearchBar = () => {
