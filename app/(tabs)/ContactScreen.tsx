@@ -136,7 +136,13 @@ const ContactScreen = () => {
   };
 
   const handleBackPress = () => {
-    router.back(); // Navigate to the previous screen
+    // Navigate to the previous screen
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      // Redirect to a fallback screen if no previous screen exists
+      router.push('/(tabs)/chatListScreen'); // Or any fallback screen
+    }
   };
 
   const [isSearchVisible, setIsSearchVisible] = useState(false);
