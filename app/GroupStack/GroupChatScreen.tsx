@@ -246,13 +246,7 @@ const GroupChatScreen: React.FC = () => {
           sendMesRes,
           Number(tagId),
         );
-        const formatMessage = messageFormat({
-          text: formattedText,
-          senderId: user!.userId,
-          userName: user!.fullName,
-          tagListResponse: tagMessage.tag,
-        });
-        setMessages((prev) => GiftedChat.append(prev, [formatMessage]));
+        fetchGroupData();
         Alert.alert('Success', 'Tag attached');
       }
       setEnteredText('');
@@ -290,13 +284,41 @@ const GroupChatScreen: React.FC = () => {
 
   if (isDialogVisible) {
     return (
-      <Animated.View entering={SlideInDown} exiting={SlideOutDown} style={styles.dialogContainer}>
+      <View style={styles.dialogContainer}>
         <AddMembersToGroup
           setIsDialogVisible={setIsDialogVisible}
           selectedGroup={selectedGroup || { groupId: 0, groupName: '' }}
           groupUserList={groupUsers}
         />
-      </Animated.View>
+      </View>
+    );
+  }
+  if (isTagModalVisible) {
+    return (
+      <Modal
+        visible={isTagModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsTagModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          {selectedTagId && (
+            <TagStatusResponses tagId={selectedTagId} onClose={() => setIsTagModalVisible(false)} />
+          )}
+        </View>
+      </Modal>
+    );
+  }
+
+  if (isTagDialogVisible) {
+    return <SendTagMessage setIsTagDialogVisible={setIsTagDialogVisible} onSend={tagSendMessage} />;
+  }
+  if (isUpdateTagDialogVisible) {
+    return (
+      <TagStatusUpdate
+        selectedGroup={selectedGroup!}
+        status={selectedStatus!}
+        setIsUpdateTagDialogVisible={setIsUpdateTagDialogVisible}
+      />
     );
   }
 
@@ -310,84 +332,58 @@ const GroupChatScreen: React.FC = () => {
         onAddMember={() => setIsDialogVisible(true)}
         onSendTagMessage={() => setIsTagDialogVisible(true)}
       />
-      {isUpdateTagDialogVisible ? (
-        <TagStatusUpdate
-          selectedGroup={selectedGroup!}
-          status={selectedStatus!}
-          setIsUpdateTagDialogVisible={setIsUpdateTagDialogVisible}
+      <View style={styles.chatContainer}>
+        <GiftedChat
+          messages={messages}
+          onSend={onSend}
+          user={{
+            _id: Number(user?.userId) || 0,
+            name: user?.fullName || 'Unknown',
+            avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
+          }}
+          renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
+          onInputTextChanged={setEnteredText}
+          text={enteredText}
+          placeholder="Enter a message..."
+          renderMessage={renderMessage}
+          renderInputToolbar={renderInputToolbar}
+          inverted={true}
         />
-      ) : (
-        <View style={styles.chatContainer}>
-          <GiftedChat
-            messages={messages}
-            onSend={onSend}
-            user={{
-              _id: Number(user?.userId) || 0,
-              name: user?.fullName || 'Unknown',
-              avatar: `https://ui-avatars.com/api/?background=234B89&color=FFF&name=${user?.fullName || 'User'}`,
-            }}
-            renderFooter={() => (messages.length === 0 ? <Placeholder /> : null)}
-            onInputTextChanged={setEnteredText}
-            text={enteredText}
-            placeholder="Enter a message..."
-            renderMessage={renderMessage}
-            renderInputToolbar={renderInputToolbar}
-            inverted={true}
+
+        {isTranslateBarVisible && (
+          <TranslateBar
+            onTranslate={handleTranslate}
+            enteredText={enteredText}
+            setTranslatedText={setTranslatedText}
           />
-          {isTagModalVisible && (
-            <Modal
-              visible={isTagModalVisible}
-              transparent
-              animationType="slide"
-              onRequestClose={() => setIsTagModalVisible(false)}>
-              <View style={styles.modalContainer}>
-                {selectedTagId && (
-                  <TagStatusResponses
-                    tagId={selectedTagId}
-                    onClose={() => setIsTagModalVisible(false)}
-                  />
-                )}
-              </View>
-            </Modal>
-          )}
-          {isTranslateBarVisible && (
-            <TranslateBar
-              onTranslate={handleTranslate}
-              enteredText={enteredText}
-              setTranslatedText={setTranslatedText}
+        )}
+        <View style={styles.translateContainer}>
+          <TouchableOpacity
+            style={styles.translateButton}
+            onPress={() => {
+              setIsTagDialogVisible(true);
+              setIsTranslateBarVisible(false);
+            }}>
+            <Fontisto
+              name="hashtag"
+              size={24}
+              color={isTagDialogVisible ? Colors.brightRed : Colors.blueColor}
             />
-          )}
-          <View style={styles.translateContainer}>
-            <TouchableOpacity
-              style={styles.translateButton}
-              onPress={() => {
-                setIsTagDialogVisible(true);
-                setIsTranslateBarVisible(false);
-              }}>
-              <Fontisto
-                name="hashtag"
-                size={24}
-                color={isTagDialogVisible ? Colors.brightRed : Colors.blueColor}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.translateButton}
-              onPress={() => {
-                setIsTranslateBarVisible(!isTranslateBarVisible);
-                setIsTagDialogVisible(false);
-              }}>
-              <MaterialIcons
-                name="translate"
-                size={24}
-                color={isTranslateBarVisible ? Colors.brightRed : Colors.blueColor}
-              />
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.translateButton}
+            onPress={() => {
+              setIsTranslateBarVisible(!isTranslateBarVisible);
+              setIsTagDialogVisible(false);
+            }}>
+            <MaterialIcons
+              name="translate"
+              size={24}
+              color={isTranslateBarVisible ? Colors.brightRed : Colors.blueColor}
+            />
+          </TouchableOpacity>
         </View>
-      )}
-      {isTagDialogVisible && (
-        <SendTagMessage setIsTagDialogVisible={setIsTagDialogVisible} onSend={tagSendMessage} />
-      )}
+      </View>
     </View>
   );
 };

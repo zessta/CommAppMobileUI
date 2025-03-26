@@ -82,7 +82,7 @@ const AboutScreen = () => {
               <View style={styles.infoContainer}>
                 <View style={styles.infoRow}>
                   <Text style={styles.label}>Name</Text>
-                  <Text style={styles.value}>{userInfo.name || 'Admin'}</Text>
+                  <Text style={styles.value}>{userInfo.fullName || 'Admin'}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.label}>Email</Text>

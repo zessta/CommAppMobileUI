@@ -126,10 +126,8 @@ const MessageContent = ({
         gap: 5,
       }}>
       {tagName ? (
-        <TouchableOpacity>
-          <Text
-            style={{ fontSize: 14, fontWeight: '900', color: '#234B89', marginTop: 2 }}
-            onPress={() => handleStatusClick(currentMessage)}>
+        <TouchableOpacity onPress={() => handleStatusClick(currentMessage)}>
+          <Text style={{ fontSize: 14, fontWeight: '900', color: '#234B89', marginTop: 2 }}>
             #{tagName}
           </Text>
         </TouchableOpacity>
