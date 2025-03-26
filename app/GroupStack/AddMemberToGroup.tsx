@@ -162,11 +162,7 @@ const AddMembersToGroup: React.FC<AddMembersToGroupProps> = ({
   return (
     <Modal visible={true} animationType="none" transparent onRequestClose={closeModal}>
       <SafeAreaView style={styles.modalContainer}>
-        <Animated.View
-          style={[
-            styles.dialogContainer,
-            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-          ]}>
+        <View style={[styles.dialogContainer]}>
           <LinearGradient
             colors={['#ffffff', '#f7f9fc']}
             start={{ x: 0, y: 0 }}
@@ -222,7 +218,7 @@ const AddMembersToGroup: React.FC<AddMembersToGroupProps> = ({
               </TouchableOpacity>
             </View>
           </LinearGradient>
-        </Animated.View>
+        </View>
       </SafeAreaView>
     </Modal>
   );
