@@ -26,6 +26,7 @@ import * as IntentLauncher from 'expo-intent-launcher'; // For opening downloade
 import * as MediaLibrary from 'expo-media-library';
 import FileDownloader from '@/Utils/fileDownloader';
 import { Colors } from '@/constants/Colors';
+import ImageView from "react-native-image-viewing";
 
 export interface AttachmentUploadResponse {
   attachmentId: number;
@@ -47,6 +48,7 @@ const ChatScreen: React.FC = () => {
     ? Number(JSON.parse(searchParams?.conversationId))
     : undefined;
   const [messages, setMessages] = useState<IMessage[]>([]);
+  const [imageSelected, setImageSelected] = useState<string | null>(null);
   const connection = useSignalR(SOCKET_URL);
   const requestPermissions = async () => {
     if (Platform.OS === 'android') {
@@ -264,6 +266,26 @@ const ChatScreen: React.FC = () => {
       minute: '2-digit',
     });
 
+    if (message?.image) {
+      return (
+        <View
+          style={[
+            styles.bubbleContainer,
+            isOwnMessage ? styles.rightContainer : styles.leftContainer,
+          ]}
+        >
+          <View style={[styles.bubble, isOwnMessage ? styles.rightBubble : styles.leftBubble]}>
+            <TouchableOpacity onPress={() => setImageSelected(message.image ?? null)}>
+              <Image
+                source={{ uri: message.image }}
+                style={styles.imageStyle}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )
+    }
+
     // File message rendering
     if (message?.fileUrl && message?.fileName) {
       return (
@@ -407,6 +429,12 @@ const ChatScreen: React.FC = () => {
         alwaysShowSend={true}
         keyboardShouldPersistTaps="handled"
       />
+      {imageSelected && <ImageView
+        images={[{uri: imageSelected}]}
+        imageIndex={0}
+        visible={true}
+        onRequestClose={() => setImageSelected(null)}
+      />}
     </View>
   );
 };
@@ -425,6 +453,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
     fontFamily: 'Poppins',
+  },
+  imageStyle: {
+    width: 150,
+    height: 150,
+    borderRadius: 10,
   },
   container: {
     flex: 1,
