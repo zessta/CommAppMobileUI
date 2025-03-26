@@ -7,7 +7,7 @@ import { ChatMessageServer, Group, Participants } from '@/constants/Types';
 import { getGroupChatHistory, getGroupUsers, updateStatusOfTags } from '@/services/api/auth';
 import { useSignalR } from '@/services/signalRService';
 import { groupMessageFormat, messageFormat } from '@/Utils/utils';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View, Modal } from 'react-native';
 import {
@@ -38,52 +38,53 @@ interface IMessage extends OriginalIMessage {
   eventTagId?: number | null;
 }
 
-// Custom Components
-const HeaderLeft = ({ onBack, groupName }: { onBack: () => void; groupName: string }) => (
-  <View style={styles.headerLeft}>
-    <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-      <IconSymbol size={24} name="arrow-back" color={Colors.brightRed} />
-    </TouchableOpacity>
-    <Image
-      source={{
-        uri: `https://ui-avatars.com/api/?background=E5322D&color=FFF&name=${groupName || 'Default'}`,
-      }}
-      style={styles.avatar}
-    />
-  </View>
-);
-
-const HeaderRight = ({
+// Custom Header Component
+const CustomHeader = ({
+  onBack,
+  groupName,
+  title,
+  onTitlePress,
   onAddMember,
   onSendTagMessage,
 }: {
+  onBack: () => void;
+  groupName: string;
+  title: string;
+  onTitlePress: () => void;
   onAddMember: () => void;
   onSendTagMessage: () => void;
 }) => (
-  <View style={styles.headerRight}>
-    {/* <TouchableOpacity onPress={onSendTagMessage} style={styles.headerIcon}>
-      <IconSymbol size={24} name="poll" color="#A08E67" />
-    </TouchableOpacity> */}
-    <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
-      <IconSymbol size={24} name="adduser" color={Colors.brightRed} />
+  <View style={styles.headerContainer}>
+    <View style={styles.headerLeft}>
+      <TouchableOpacity onPress={onBack} style={styles.headerButton}>
+        <IconSymbol size={24} name="arrow-back" color={Colors.brightRed} />
+      </TouchableOpacity>
+      <Image
+        source={{
+          uri: `https://ui-avatars.com/api/?background=E5322D&color=FFF&name=${groupName || 'Default'}`,
+        }}
+        style={styles.avatar}
+      />
+    </View>
+    <TouchableOpacity onPress={onTitlePress} style={styles.headerTitleContainer}>
+      <Text style={styles.headerTitle}>{title}</Text>
     </TouchableOpacity>
+    <View style={styles.headerRight}>
+      <TouchableOpacity onPress={onAddMember} style={styles.headerIcon}>
+        <IconSymbol size={24} name="adduser" color={Colors.brightRed} />
+      </TouchableOpacity>
+    </View>
   </View>
 );
 
-const HeaderTitle = ({ title, onPress }: { title: string; onPress: () => void }) => (
-  <TouchableOpacity onPress={onPress} style={styles.headerTitleContainer}>
-    <Text style={styles.headerTitle}>{title}</Text>
-  </TouchableOpacity>
-);
-
+// Placeholder Component (unchanged)
 const Placeholder = () => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisible(true);
-    }, 500); // Show placeholder after 0.5 seconds
-
+    }, 500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -97,14 +98,6 @@ const Placeholder = () => {
     </Animated.View>
   );
 };
-
-const AcceptButton = ({ onAccept }: { onAccept: () => void }) => (
-  <Animated.View entering={FadeIn} exiting={FadeOut}>
-    <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
-      <Text style={styles.acceptText}>Accept</Text>
-    </TouchableOpacity>
-  </Animated.View>
-);
 
 // Main Component
 const GroupChatScreen: React.FC = () => {
@@ -126,14 +119,8 @@ const GroupChatScreen: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<number>();
   const [chatHistory, setChatHistory] = useState<ChatMessageServer[]>();
   const [isTranslateBarVisible, setIsTranslateBarVisible] = useState<boolean>(false);
-
-  // if (!user) {
-  //   return (
-  //     <View style={styles.container}>
-  //       <Text>User not logged in</Text>
-  //     </View>
-  //   );
-  // }
+  const [isTagModalVisible, setIsTagModalVisible] = useState(false);
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
 
   const fetchGroupData = useCallback(async () => {
     if (!selectedGroup?.groupId) return;
@@ -161,7 +148,7 @@ const GroupChatScreen: React.FC = () => {
           });
         }),
       );
-      setMessages(formattedMessages); // Ensure correct order for inverted chat
+      setMessages(formattedMessages);
     } catch (error) {
       console.error('Error fetching group data:', error);
     }
@@ -210,7 +197,7 @@ const GroupChatScreen: React.FC = () => {
       try {
         await connection.invoke('SendMessageToGroup', selectedGroup?.groupId, message.text);
         setEnteredText('');
-        fetchGroupData(); // Refresh messages after sending
+        fetchGroupData();
       } catch (error) {
         console.error('Error sending message:', error);
       }
@@ -219,14 +206,8 @@ const GroupChatScreen: React.FC = () => {
   );
 
   const handleTranslate = useCallback((trans: string) => {
-    console.log('enteredText', enteredText);
     setEnteredText(trans);
   }, []);
-
-  const handleAcceptTranslation = useCallback(() => {
-    setEnteredText(translatedText);
-    setTranslatedText('');
-  }, [translatedText]);
 
   const navigateToGroupDetails = useCallback(() => {
     router.push({
@@ -237,9 +218,6 @@ const GroupChatScreen: React.FC = () => {
       },
     });
   }, [selectedGroup, groupUsers]);
-
-  const [isTagModalVisible, setIsTagModalVisible] = useState(false);
-  const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
 
   const handleStatusClick = async (currentUserMessage: any) => {
     if (currentUserMessage.user._id === user?.userId) {
@@ -252,8 +230,6 @@ const GroupChatScreen: React.FC = () => {
   };
 
   const tagSendMessage = async (tagMessage: TagMessageProp) => {
-    // if (!tagMessage.tag || !connection || connection.state !== 'Connected') return;
-
     const formattedText = `${tagMessage.message}\n${tagMessage.tag.name}`;
     const tagId = tagMessage.tag.eventTagId;
 
@@ -290,14 +266,6 @@ const GroupChatScreen: React.FC = () => {
     return <RenderMessage messageProps={props} handleStatusClick={handleStatusClick} />;
   };
 
-  const renderDay = (props: any) => (
-    <Animated.View entering={FadeIn} exiting={FadeOut}>
-      <Text style={styles.dayLabel}>
-        {new Date(props.currentMessage.createdAt).toLocaleDateString('en-US', { weekday: 'long' })}
-      </Text>
-    </Animated.View>
-  );
-
   const renderInputToolbar = (props: React.ComponentProps<typeof InputToolbar>) => (
     <InputToolbar
       {...props}
@@ -332,45 +300,15 @@ const GroupChatScreen: React.FC = () => {
     );
   }
 
-  // if (isUpdateTagDialogVisible) {
-  //   return (
-  //     <TagStatusUpdate
-  //       selectedGroup={selectedGroup!}
-  //       status={selectedStatus!}
-  //       setIsUpdateTagDialogVisible={setIsUpdateTagDialogVisible}
-  //     />
-  //   );
-  // }
-
-  if (isTagDialogVisible) {
-    return <SendTagMessage setIsTagDialogVisible={setIsTagDialogVisible} onSend={tagSendMessage} />;
-  }
-
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerStyle: {
-            backgroundColor: '#fff',
-            // borderBottomWidth: 1,
-            // borderBottomColor: '#f0f0f0',
-          },
-          headerLeft: () => (
-            <HeaderLeft onBack={() => router.back()} groupName={selectedGroup?.groupName || ''} />
-          ),
-          headerTitle: () => (
-            <HeaderTitle
-              title={selectedGroup?.groupName || 'Group Chat'}
-              onPress={navigateToGroupDetails}
-            />
-          ),
-          headerRight: () => (
-            <HeaderRight
-              onAddMember={() => setIsDialogVisible(true)}
-              onSendTagMessage={() => setIsTagDialogVisible(true)}
-            />
-          ),
-        }}
+      <CustomHeader
+        onBack={() => router.back()}
+        groupName={selectedGroup?.groupName || ''}
+        title={selectedGroup?.groupName || 'Group Chat'}
+        onTitlePress={navigateToGroupDetails}
+        onAddMember={() => setIsDialogVisible(true)}
+        onSendTagMessage={() => setIsTagDialogVisible(true)}
       />
       {isUpdateTagDialogVisible ? (
         <TagStatusUpdate
@@ -396,9 +334,7 @@ const GroupChatScreen: React.FC = () => {
             renderInputToolbar={renderInputToolbar}
             inverted={true}
           />
-
-          {/* Modal for TagStatusResponses */}
-          {isTagModalVisible ? (
+          {isTagModalVisible && (
             <Modal
               visible={isTagModalVisible}
               transparent
@@ -408,19 +344,19 @@ const GroupChatScreen: React.FC = () => {
                 {selectedTagId && (
                   <TagStatusResponses
                     tagId={selectedTagId}
-                    onClose={() => setIsTagModalVisible(false)} // Pass close function
+                    onClose={() => setIsTagModalVisible(false)}
                   />
                 )}
               </View>
             </Modal>
-          ) : null}
-          {isTranslateBarVisible ? (
+          )}
+          {isTranslateBarVisible && (
             <TranslateBar
               onTranslate={handleTranslate}
               enteredText={enteredText}
               setTranslatedText={setTranslatedText}
             />
-          ) : null}
+          )}
           <View style={styles.translateContainer}>
             <TouchableOpacity
               style={styles.translateButton}
@@ -428,14 +364,11 @@ const GroupChatScreen: React.FC = () => {
                 setIsTagDialogVisible(true);
                 setIsTranslateBarVisible(false);
               }}>
-              {/* <IconSymbol size={24} name="poll" color="red" /> */}
               <Fontisto
                 name="hashtag"
                 size={24}
                 color={isTagDialogVisible ? Colors.brightRed : Colors.blueColor}
               />
-
-              {/* <Text style={styles.translateText}>Translate</Text> */}
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.translateButton}
@@ -450,14 +383,10 @@ const GroupChatScreen: React.FC = () => {
               />
             </TouchableOpacity>
           </View>
-
-          {/* {translatedText && (
-            <>
-              <Text style={styles.translatedText}>{translatedText}</Text>
-              <AcceptButton onAccept={handleAcceptTranslation} />
-            </>
-          )} */}
         </View>
+      )}
+      {isTagDialogVisible && (
+        <SendTagMessage setIsTagDialogVisible={setIsTagDialogVisible} onSend={tagSendMessage} />
       )}
     </View>
   );
@@ -471,6 +400,16 @@ const styles = StyleSheet.create({
   chatContainer: {
     flex: 1,
   },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -478,7 +417,6 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 10,
   },
   headerButton: {
     padding: 5,
@@ -488,6 +426,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   headerTitleContainer: {
+    flex: 1,
     paddingVertical: 10,
   },
   headerTitle: {
@@ -522,98 +461,7 @@ const styles = StyleSheet.create({
     gap: 40,
   },
   translateButton: {
-    // backgroundColor: '#A08E67',
-    // paddingVertical: 8,
-    // paddingHorizontal: 16,
-    // borderRadius: 20,
-    // marginRight: 10,
-  },
-  translateText: {
-    color: '#FFF',
-    fontWeight: '600',
-  },
-  translatedText: {
-    marginLeft: 10,
-    marginVertical: 5,
-    fontSize: 14,
-    color: '#424242',
-    backgroundColor: '#F6F8FE',
-    padding: 8,
-    borderRadius: 8,
-  },
-  acceptButton: {
-    backgroundColor: '#43A047',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    alignSelf: 'center',
-    margin: 10,
-    elevation: 2,
-  },
-  acceptText: {
-    color: '#FFF',
-    fontWeight: '600',
-  },
-  messageContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginVertical: 5,
-  },
-  messageContainerLeft: {
-    justifyContent: 'flex-start',
-    marginRight: 50,
-  },
-  messageContainerRight: {
-    justifyContent: 'flex-end',
-    marginLeft: 50,
-  },
-  messageContent: {
-    flex: 1,
-  },
-  bubble: {
-    borderRadius: 15,
-    padding: 10,
-    maxWidth: '100%',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  bubbleLeft: {
-    backgroundColor: '#FFF',
-    borderBottomLeftRadius: 0,
-  },
-  bubbleRight: {
-    backgroundColor: '#A08E67',
-    borderBottomRightRadius: 0,
-    alignSelf: 'flex-end',
-  },
-  bubbleText: {
-    fontSize: 16,
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#A08E67',
-    marginTop: 2,
-    alignSelf: 'flex-end',
-  },
-  messageAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginHorizontal: 5,
-  },
-  dayLabel: {
-    fontSize: 14,
-    color: '#FFF',
-    textAlign: 'center',
-    marginVertical: 10,
-    backgroundColor: '#A08E67',
-    padding: 5,
-    borderRadius: 10,
-    alignSelf: 'center',
-    fontWeight: 'bold',
+    // Add styling if needed
   },
   inputToolbar: {
     flexDirection: 'row',
@@ -654,18 +502,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginRight: 10,
   },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  checkbox: {
-    marginRight: 5,
-  },
-  checkboxText: {
-    fontSize: 16,
-    color: '#333',
-  },
   dialogContainer: {
     position: 'absolute',
     top: 0,
@@ -673,24 +509,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-  },
-  statusButton: {
-    backgroundColor: '#E0F7FA',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    marginRight: 8,
-    marginBottom: 5,
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#0277BD',
-    fontWeight: '500',
   },
   modalContainer: {
     flex: 1,

@@ -365,39 +365,32 @@ const ChatScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: receiverData.name,
-          headerTitleStyle: { fontSize: 16, fontWeight: 'bold' },
-          headerLargeStyle: { backgroundColor: 'blue' },
-          headerLeft: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginLeft: 10,
-                }}
-                onPress={() => router.back()}>
-                <IconSymbol size={28} name="arrow-back" color={Colors.brightRed} />
-              </TouchableOpacity>
-              <Image
-                source={{
-                  uri: `https://ui-avatars.com/api/?background=E5322D&color=FFF&name=${receiverData.name}`,
-                }}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  gap: 10,
-                  rowGap: 10,
-                  marginRight: 10,
-                }}
-              />
-            </View>
-          ),
-        }}
-      />
+      <View style={styles.headerContainer}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginLeft: 10,
+            }}
+            onPress={() => router.back()}>
+            <IconSymbol size={28} name="arrow-back" color={Colors.brightRed} />
+          </TouchableOpacity>
+          <Image
+            source={{
+              uri: `https://ui-avatars.com/api/?background=E5322D&color=FFF&name=${receiverData.name}`,
+            }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              gap: 10,
+              rowGap: 10,
+              marginRight: 10,
+            }}
+          />
+        </View>
+      </View>
       <GiftedChat
         messages={messages}
         onSend={(messages: IMessage[]) => onSend(messages)}
@@ -417,6 +410,16 @@ const ChatScreen: React.FC = () => {
   );
 };
 const styles = StyleSheet.create({
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
