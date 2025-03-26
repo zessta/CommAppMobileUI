@@ -278,8 +278,16 @@ const ChatScreen: React.FC = () => {
         mimeType: 'application/pdf', // MIME type for PDF file
       },
     ];
+
     FileDownloader.downloadFilesAsync(files, (directoryChange) => {
       console.log('Directory change:', directoryChange);
+
+      // Show an alert when the file is downloaded
+      Alert.alert(
+        'Download Complete',
+        `Your file "${fileName}" has been downloaded successfully.`,
+        [{ text: 'OK' }],
+      );
     });
   };
   const renderMessage = (props: { currentMessage?: IMessage }) => {
