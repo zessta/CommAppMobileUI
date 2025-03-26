@@ -390,6 +390,7 @@ const ChatScreen: React.FC = () => {
             }}
           />
         </View>
+        <Text style={styles.headerTitle}>{receiverData.name}</Text>
       </View>
       <GiftedChat
         messages={messages}
@@ -413,12 +414,17 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#fff',
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+    fontFamily: 'Poppins',
   },
   container: {
     flex: 1,
