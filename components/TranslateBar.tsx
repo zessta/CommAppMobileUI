@@ -1,8 +1,10 @@
 import { Colors } from '@/constants/Colors';
+import { getTranslationText } from '@/services/api/auth';
 import Checkbox from 'expo-checkbox';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Translator from 'react-native-translator';
 
 const TranslateBar = ({
   onTranslate,
@@ -66,56 +68,21 @@ const TranslateBar = ({
   }, [enteredText, transLang]);
 
   const handleTranslateButtonPress = useCallback(async () => {
-    if (!enteredText || enteredText === 'Enter a URL' || isTranslateDisabled) return;
+    if (!enteredText || isTranslateDisabled) return;
 
     setLoading(true);
 
-    const url = 'http://40.90.233.51:8000/v1/chat/completions';
-
-    const payload = {
-      model: '/home/azureuser/finetune/viet_sing_merged_model_6/',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `You are given text in English. Please translate it into ${transLang === 'te' ? 'Telugu' : 'Hindi'}. 
-                   Keep the translation simple. Do not return anything else. 
-                   This is the text: ${enteredText}`,
-            },
-          ],
-        },
-      ],
-      temperature: 0.0,
-      top_p: 0.3,
-      top_k: 3,
-      max_tokens: 1024,
-    };
-
     try {
-      const startTime = Date.now();
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const elapsedTime = (Date.now() - startTime) / 1000;
-
-      if (response.ok) {
-        const responseData = await response.json();
-        console.log('Response:responseDataresponseData', responseData);
-        const extractedText = responseData.choices[0].message.content;
-        console.log('extractedText', extractedText);
-        setTranslatedText(extractedText);
-        onTranslate(extractedText);
+      const translationResponse = await getTranslationText(enteredText, transLang);
+      console.log('translationResponse', translationResponse);
+      if (translationResponse) {
+        setTranslatedText(translationResponse);
+        onTranslate(translationResponse);
       } else {
-        console.error('Error:', response.status, await response.text());
+        console.error('Translation failed');
       }
     } catch (error) {
-      console.error('Error parsing response:', error);
+      console.error('Error during translation:', error);
     } finally {
       setLoading(false);
     }
@@ -156,6 +123,14 @@ const TranslateBar = ({
             )}
           </TouchableOpacity>
         </View>
+        {enteredText && (
+          <Translator
+            from="en"
+            to={transLang}
+            value={enteredText}
+            onTranslated={(t) => setResult(t)}
+          />
+        )}
       </View>
     </Animated.View>
   );
