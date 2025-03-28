@@ -36,6 +36,8 @@ import FileDownloader from '@/Utils/fileDownloader';
 import { Colors } from '@/constants/Colors';
 import ImageView from 'react-native-image-viewing';
 
+//ChatScreen component
+
 export interface AttachmentUploadResponse {
   attachmentId: number;
   fileName?: string;
