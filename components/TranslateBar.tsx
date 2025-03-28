@@ -19,7 +19,8 @@ const TranslateBar = ({
   const [transLang, setTransLang] = useState<string>('te');
   const [isTeluguChecked, setIsTeluguChecked] = useState<boolean>(false);
   const [isHindiChecked, setIsHindiChecked] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isLoadingTranslate, setIsLoadingTranslate] = useState<boolean>(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState<boolean>(false);
 
   const languageList = useMemo(
     () => [
@@ -67,62 +68,104 @@ const TranslateBar = ({
     }
   }, [enteredText, transLang]);
 
-  const handleTranslateButtonPress = useCallback(async () => {
-    if (!enteredText || isTranslateDisabled) return;
-
-    setLoading(true);
-
-    try {
-      const translationResponse = await getTranslationText(enteredText, transLang);
-      console.log('translationResponse', translationResponse);
-      if (translationResponse) {
-        setTranslatedText(translationResponse);
-        onTranslate(translationResponse);
+  const handleTranslateButtonPress = useCallback(
+    async (isDrafting?: boolean) => {
+      if (!enteredText) return;
+      if (isDrafting) {
+        setIsLoadingDraft(true);
       } else {
-        console.error('Translation failed');
+        setIsLoadingTranslate(true);
       }
-    } catch (error) {
-      console.error('Error during translation:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [enteredText, transLang, onTranslate, setTranslatedText, isTranslateDisabled]);
+
+      try {
+        const translationResponse = await getTranslationText(enteredText, transLang, isDrafting);
+        console.log('translationResponse', translationResponse);
+        if (translationResponse) {
+          setTranslatedText(translationResponse);
+          onTranslate(translationResponse);
+        } else {
+          console.error('Translation failed');
+        }
+      } catch (error) {
+        console.error('Error during translation:', error);
+      } finally {
+        if (isDrafting) {
+          setIsLoadingDraft(false);
+        } else {
+          setIsLoadingTranslate(false);
+        }
+      }
+    },
+    [enteredText, transLang, onTranslate, setTranslatedText, isTranslateDisabled],
+  );
+
+  const handleDraftButtonPress = useCallback(() => {
+    if (!enteredText) return;
+
+    setIsLoadingDraft(true);
+
+    handleTranslateButtonPress(true).finally(() => {
+      setIsLoadingDraft(false);
+    });
+  }, [enteredText, handleTranslateButtonPress]);
 
   return (
     <Animated.View entering={FadeIn} exiting={FadeOut}>
       <View style={styles.translateContainer}>
-        {/* Language Checkboxes Section */}
-        <View style={styles.languageContainer}>
-          {languageList.map((lang) => (
-            <View style={styles.checkboxRow} key={lang.value}>
-              <Checkbox
-                value={lang.value === 'te' ? isTeluguChecked : isHindiChecked}
-                onValueChange={() => handleLangChange(lang.value)}
-                style={styles.checkbox}
-                color={isTeluguChecked || isHindiChecked ? '#234B89' : undefined}
-              />
-              <Text style={styles.checkboxText}>{lang.title}</Text>
+        {/* Language Selection and Drafting Option in Row */}
+        <View style={styles.languageAndDraftContainer}>
+          <View style={styles.rowContainer}>
+            <View style={styles.checkboxContainer}>
+              {languageList.map((lang) => (
+                <View style={styles.checkboxRow} key={lang.value}>
+                  <Checkbox
+                    value={lang.value === 'te' ? isTeluguChecked : isHindiChecked}
+                    onValueChange={() => handleLangChange(lang.value)}
+                    style={styles.checkbox}
+                    color={isTeluguChecked || isHindiChecked ? Colors.blueColor : undefined}
+                  />
+                  <Text style={styles.checkboxText}>{lang.title}</Text>
+                </View>
+              ))}
             </View>
-          ))}
+
+            {/* Translate Button */}
+            <View style={styles.draftingButtonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.translateButton,
+                  isTranslateDisabled && styles.translateButtonDisabled,
+                ]}
+                onPress={() => handleTranslateButtonPress()}
+                disabled={isTranslateDisabled}>
+                {isLoadingTranslate ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.translateText}>Translate</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Drafting Button */}
+          <View style={styles.translateButtonContainer}>
+            <TouchableOpacity
+              style={[
+                styles.translateButton,
+                (!enteredText || !isTranslateDisabled) && styles.translateButtonDisabled,
+              ]}
+              onPress={() => handleTranslateButtonPress(true)}
+              disabled={!enteredText || !isTranslateDisabled}>
+              {isLoadingDraft ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.translateText}>Draft the message</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Translate Button Section */}
-        <View style={styles.translateButtonContainer}>
-          <TouchableOpacity
-            style={[
-              styles.translateButton,
-              isTranslateDisabled && styles.translateButtonDisabled, // Apply disabled style if no checkbox is checked
-            ]}
-            onPress={handleTranslateButtonPress}
-            disabled={isTranslateDisabled} // Disable the button if no checkbox is checked
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.translateText}>Translate</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        {/* Display the translated text */}
         {enteredText && (
           <Translator
             from="en"
@@ -140,9 +183,9 @@ export default TranslateBar;
 
 const styles = StyleSheet.create({
   translateContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
-    padding: 10,
+    padding: 20,
     backgroundColor: '#FFF',
     borderTopWidth: 1,
     borderColor: '#f0f0f0',
@@ -151,20 +194,29 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    justifyContent: 'flex-start',
     width: '100%',
   },
-  languageContainer: {
+  languageAndDraftContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  rowContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    width: '50%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 20,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    gap: 15,
   },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 15,
-    maxWidth: '50%',
-    gap: 10,
   },
   checkbox: {
     marginRight: 5,
@@ -173,25 +225,30 @@ const styles = StyleSheet.create({
   checkboxText: {
     fontSize: 16,
     color: Colors.blueColor,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  draftingButtonContainer: {
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
   },
   translateButtonContainer: {
-    width: '50%',
-    justifyContent: 'flex-end',
+    width: '100%',
+    justifyContent: 'flex-start',
     alignItems: 'flex-end',
   },
   translateButton: {
     backgroundColor: Colors.blueColor,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 6.3,
-    alignSelf: 'flex-end',
+    alignSelf: 'flex-start',
   },
   translateButtonDisabled: {
-    backgroundColor: '#B0B0B0', // Grey color when disabled
+    backgroundColor: '#B0B0B0',
   },
   translateText: {
     color: '#FFF',
     fontWeight: '600',
+    fontSize: 16,
   },
 });

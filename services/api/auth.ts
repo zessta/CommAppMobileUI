@@ -213,16 +213,23 @@ export const getFileById = async (attachmentId: number) => {
   }
 };
 
-export const getTranslationText = async (enteredText: string, transLang: string) => {
+export const getTranslationText = async (
+  enteredText: string,
+  transLang: string,
+  isDraftMessage?: boolean,
+) => {
   const data = JSON.stringify({
-    model: '/home/azureuser/finetune/viet_sing_merged_model_6/',
+    model: 'meta-llama/Llama-3.2-3B-Instruct',
     messages: [
       {
         role: 'user',
         content: [
           {
             type: 'text',
-            text: `You are given text in English. Please translate it into ${transLang === 'te' ? 'Telugu' : 'Hindi'}. 
+            text: isDraftMessage
+              ? `You are given text in English. Please draft the message professionally and formally. Do not return anything else.
+            This is the text : ${enteredText}`
+              : `You are given text in English. Please translate it into ${transLang === 'te' ? 'Telugu' : 'Hindi'}. 
                    Keep the translation simple. Do not return anything else. 
                    This is the text: ${enteredText}`,
           },
@@ -238,7 +245,7 @@ export const getTranslationText = async (enteredText: string, transLang: string)
   const config = {
     method: 'post',
     maxBodyLength: Infinity,
-    url: 'http://40.90.233.51:8000/v1/chat/completions',
+    url: 'http://74.225.221.182:8000/v1/chat/completions',
     headers: {
       'Content-Type': 'application/json',
     },
