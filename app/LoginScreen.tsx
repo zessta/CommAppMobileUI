@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -22,6 +23,7 @@ import {
   View,
 } from 'react-native';
 
+const MOBILE_LOGIN_IMAGE = require('@/assets/images/mobilelogo.png');
 const LoginScreen = () => {
   const router = useRouter();
   const [input, setInput] = useState<string>('');
@@ -91,10 +93,11 @@ const LoginScreen = () => {
       style={styles.container}>
       <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
         <View style={styles.logoContainer}>
-          <LoginImage />
+          <Image style={styles.logoImage} source={MOBILE_LOGIN_IMAGE} />
         </View>
+        <Text style={styles.subtitle}>Intelligence Bureau</Text>
         <Text style={styles.header}>Sign in</Text>
-        <Text style={styles.subtitle}>Sign in to continue to Chat.</Text>
+
         <View style={styles.form}>
           <Text style={styles.label}>Email id</Text>
           <TextInput
@@ -148,36 +151,42 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 5,
+    alignItems: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 0,
   },
-  logo: {
-    fontSize: 40,
-    color: '#6B46C1',
+  logoImage: {
+    width: 87,
+    height: 106,
   },
   header: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '400',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 5,
+    marginBottom: 10,
+    fontFamily: 'Poppins',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 12,
+    color: '#B3B3B3',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
+    fontWeight: '400',
+    fontFamily: 'Poppins',
   },
   form: {
     width: '100%',
+    alignItems: 'center',
   },
   label: {
     fontSize: 14,
     color: '#444',
     marginBottom: 5,
     fontWeight: '500',
+    alignSelf: 'flex-start',
   },
   input: {
     borderWidth: 1,
@@ -195,6 +204,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
+    width: '100%',
   },
   buttonText: {
     color: '#FFFFFF',
