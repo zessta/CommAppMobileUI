@@ -34,7 +34,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as MediaLibrary from 'expo-media-library';
 import FileDownloader from '@/Utils/fileDownloader';
 import { Colors } from '@/constants/Colors';
-import ImageView from "react-native-image-viewing";
+import ImageView from 'react-native-image-viewing';
 
 export interface AttachmentUploadResponse {
   attachmentId: number;
@@ -306,18 +306,14 @@ const ChatScreen: React.FC = () => {
           style={[
             styles.bubbleContainer,
             isOwnMessage ? styles.rightContainer : styles.leftContainer,
-          ]}
-        >
+          ]}>
           <View style={[styles.bubble, isOwnMessage ? styles.rightBubble : styles.leftBubble]}>
             <TouchableOpacity onPress={() => setImageSelected(message.image ?? null)}>
-              <Image
-                source={{ uri: message.image }}
-                style={styles.imageStyle}
-              />
+              <Image source={{ uri: message.image }} style={styles.imageStyle} />
             </TouchableOpacity>
           </View>
         </View>
-      )
+      );
     }
 
     // File message rendering
@@ -463,12 +459,14 @@ const ChatScreen: React.FC = () => {
         alwaysShowSend={true}
         keyboardShouldPersistTaps="handled"
       />
-      {imageSelected && <ImageView
-        images={[{uri: imageSelected}]}
-        imageIndex={0}
-        visible={true}
-        onRequestClose={() => setImageSelected(null)}
-      />}
+      {imageSelected && (
+        <ImageView
+          images={[{ uri: imageSelected }]}
+          imageIndex={0}
+          visible={true}
+          onRequestClose={() => setImageSelected(null)}
+        />
+      )}
     </View>
   );
 };
