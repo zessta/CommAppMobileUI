@@ -62,22 +62,19 @@ const GroupItem: React.FC<GroupItemProps> = ({ item, onPress, groupLastMessageLi
   );
 };
 
-// Main Component
 const GroupListScreen = () => {
   const { user } = useUser();
   const connection = useSignalR(SOCKET_URL);
   const [groupsList, setGroupsList] = useState<Group[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
   const [groupLastMessageList, setGroupLastMessageList] = useState<ChatConversationType[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
 
-  // Fetch data when screen is focused
   useFocusEffect(
     useCallback(() => {
-      fetchData(); // Call fetchData when the screen is focused
+      fetchData(); // Fetch data when screen is focused
     }, []),
   );
 
@@ -121,9 +118,12 @@ const GroupListScreen = () => {
     if (router.canGoBack()) {
       router.back();
     } else {
-      // Redirect to a fallback screen if no previous screen exists
-      router.push('/(tabs)/chatListScreen'); // Or any fallback screen
+      router.push('/(tabs)/chatListScreen'); // Fallback screen
     }
+  };
+
+  const onGroupCreated = async (groupId: number, groupName: string) => {
+    await fetchData(); // Refresh groups list
   };
 
   const toggleSearchBar = () => {
@@ -131,36 +131,77 @@ const GroupListScreen = () => {
     setSearchQuery('');
   };
 
-  const handleMenuPress = () => {
-    Alert.alert('Menu', 'Menu options will appear here', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Option 1', onPress: () => console.log('Option 1 selected') },
-      { text: 'Option 2', onPress: () => console.log('Option 2 selected') },
-    ]);
+  const onReceiveGroupMessage = (
+    senderId: number,
+    message: string,
+    groupName: string,
+    groupId: number,
+  ) => {
+    // Handle new message for group
+    console.log(`New message in group ${groupName}: ${message}`);
+    fetchData(); // Refresh the chat or group data
   };
 
-  const onGroupCreated = async (groupId: number, groupName: string) => {
-    // Fetch updated groups after a new group is created
-    console.log('groupId, groupName', groupId, groupName);
-    await fetchData();
+  const onGroupDeleted = (groupId: number, groupName: string) => {
+    console.log(`Group ${groupName} has been deleted`);
+    fetchData(); // Refresh the group list after deletion
   };
 
-  // Ensure we subscribe to the GroupCreated event properly
+  const onAddedToGroup = (groupId: number, groupName: string) => {
+    console.log(`You have been added to group ${groupName}`);
+    fetchData(); // Update the group list with the new group
+  };
+
+  const onGroupMemberAdded = (groupId: number, newMemberUserName: string) => {
+    console.log(`New member ${newMemberUserName} added to the group`);
+    fetchData(); // Refresh group details to show the new member
+  };
+
+  const onUpdateGroupList = (groupListJson: string) => {
+    const updatedGroupList: Group[] = JSON.parse(groupListJson);
+    setGroupsList(updatedGroupList); // Update the group's list with the new data
+  };
+
+  const onRemovedFromGroup = (groupId: number, groupName: string) => {
+    console.log(`You are removed from this ${groupName}.`);
+    fetchData();
+  };
+
+  const onGroupMemberRemoved = (groupId: number, groupMemberName: string) => {
+    console.log(`${groupMemberName} removed from the group.`);
+    fetchData();
+  };
+
   useEffect(() => {
     if (!connection) return;
 
+    // Subscribe to all the necessary events
     connection.on('GroupCreated', onGroupCreated);
+    connection.on('ReceiveGroupMessage', onReceiveGroupMessage);
+    connection.on('GroupDeleted', onGroupDeleted);
+    connection.on('AddedToGroup', onAddedToGroup);
+    connection.on('GroupMemberAdded', onGroupMemberAdded);
+    connection.on('UpdateGroupList', onUpdateGroupList);
+    connection.on('RemovedFromGroup', onRemovedFromGroup);
+    connection.on('GroupMemberRemoved', onGroupMemberRemoved);
 
+    // Cleanup the event listeners
     return () => {
       if (connection) {
-        connection.off('GroupCreated', onGroupCreated); // Unsubscribe on cleanup
+        connection.off('GroupCreated', onGroupCreated);
+        connection.off('ReceiveGroupMessage', onReceiveGroupMessage);
+        connection.off('GroupDeleted', onGroupDeleted);
+        connection.off('AddedToGroup', onAddedToGroup);
+        connection.off('GroupMemberAdded', onGroupMemberAdded);
+        connection.off('UpdateGroupList', onUpdateGroupList);
+        connection.off('RemovedFromGroup', onRemovedFromGroup);
+        connection.off('GroupMemberRemoved', onGroupMemberRemoved);
       }
     };
   }, [connection]);
 
   return (
     <View style={styles.container}>
-      {/* Header Section */}
       <View style={styles.header}>
         {isSearchVisible ? (
           <View style={styles.searchContainer}>
@@ -203,41 +244,30 @@ const GroupListScreen = () => {
         )}
       </View>
 
-      {/* White Container for FlatList */}
-      <View style={styles.listContainer}>
-        {isLoading && !isRefreshing ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.loaderText}>Loading groups...</Text>
-          </View>
-        ) : null}
-        <FlatList
-          data={filteredGroupsList}
-          renderItem={({ item }) => (
-            <Animated.View entering={FadeIn} exiting={FadeOut}>
-              <GroupItem
-                item={item}
-                onPress={() =>
-                  router.push({
-                    pathname: '/GroupStack/GroupChatScreen',
-                    params: { selectedGroup: JSON.stringify(item) },
-                  })
-                }
-                groupLastMessageList={groupLastMessageList}
-                user={user!}
-              />
-            </Animated.View>
-          )}
-          keyExtractor={(item) => item.groupId?.toString() || Math.random().toString()}
-          ListEmptyComponent={
-            !isLoading ? <Text style={styles.noGroupsText}>No groups found</Text> : null
-          }
-          refreshing={isRefreshing}
-          onRefresh={onRefresh}
-        />
-      </View>
-
-      {/* {isDialogVisible ? <CreateGroup setIsDialogVisible={setIsDialogVisible} /> : null} */}
+      <FlatList
+        data={filteredGroupsList}
+        renderItem={({ item }) => (
+          <Animated.View entering={FadeIn} exiting={FadeOut}>
+            <GroupItem
+              item={item}
+              onPress={() =>
+                router.push({
+                  pathname: '/GroupStack/GroupChatScreen',
+                  params: { selectedGroup: JSON.stringify(item) },
+                })
+              }
+              groupLastMessageList={groupLastMessageList}
+              user={user!}
+            />
+          </Animated.View>
+        )}
+        keyExtractor={(item) => item.groupId?.toString() || Math.random().toString()}
+        refreshing={isRefreshing}
+        onRefresh={onRefresh}
+        ListEmptyComponent={
+          !isLoading ? <Text style={styles.noGroupsText}>No groups found</Text> : null
+        }
+      />
     </View>
   );
 };
