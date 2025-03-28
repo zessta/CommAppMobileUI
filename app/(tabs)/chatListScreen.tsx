@@ -96,6 +96,11 @@ const ChatListScreen = () => {
     }
   }, [connection]);
 
+  const handleNewMessage = (message: any) => {
+    // Update the chat list with the latest message without API call
+    joinChat();
+  };
+
   // API and SignalR Methods
   const newUserConnection = async () => {
     await connection!.invoke('NewUser', user?.fullName);
@@ -147,6 +152,18 @@ const ChatListScreen = () => {
       },
     });
   };
+
+  useEffect(() => {
+    if (connection) {
+      connection.on('ReceiveMessage', handleNewMessage);
+    }
+
+    return () => {
+      if (connection) {
+        connection.off('ReceiveMessage', handleNewMessage);
+      }
+    };
+  }, [connection]);
 
   return (
     <View style={styles.container}>

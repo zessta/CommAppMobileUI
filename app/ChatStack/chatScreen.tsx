@@ -34,7 +34,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as MediaLibrary from 'expo-media-library';
 import FileDownloader from '@/Utils/fileDownloader';
 import { Colors } from '@/constants/Colors';
-import ImageView from "react-native-image-viewing";
+import ImageView from 'react-native-image-viewing';
 
 export interface AttachmentUploadResponse {
   attachmentId: number;
@@ -57,7 +57,7 @@ const ChatScreen: React.FC = () => {
     : undefined;
   const [messages, setMessages] = useState<IMessage[]>([]);
   const [imageSelected, setImageSelected] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // New loading state
+  const [isLoading, setIsLoading] = useState(true);
   const connection = useSignalR(SOCKET_URL);
 
   const requestPermissions = async () => {
@@ -93,7 +93,7 @@ const ChatScreen: React.FC = () => {
       const message: FileMessage = {
         _id: uuidv4(),
         text: chatMes.messageText,
-        createdAt: Number(chatMes.createdOn),
+        createdAt: new Date(Number(chatMes.createdOn)), // Ensure proper date conversion
         user: { _id: chatMes.senderId, name: chatUserName },
       };
 
@@ -116,7 +116,7 @@ const ChatScreen: React.FC = () => {
 
   const setupConnection = useCallback(async () => {
     if (!connection) return;
-    setIsLoading(true); // Start loading
+    setIsLoading(true);
     try {
       if (conversationId) {
         const userChatHistoryData: ChatMessageServer[] = await getUsersChatHistory(conversationId);
@@ -131,7 +131,7 @@ const ChatScreen: React.FC = () => {
     } catch (error) {
       console.error('Error setting up connection:', error);
     } finally {
-      setIsLoading(false); // Stop loading once messages are loaded or an error occurs
+      setIsLoading(false);
     }
   }, [connection, handleIncomingMessage, receiverData.id, senderData.userId, conversationId]);
 
@@ -168,22 +168,22 @@ const ChatScreen: React.FC = () => {
       const newMessage: IMessage = {
         _id: uuidv4(),
         text: message,
-        createdAt: Date.now(),
+        createdAt: new Date(), // For new messages, use current time
         user: { _id: receiverData.id, name: receiverData.name },
       };
       if (attachmentId) {
         const attachmentResponse = await getImageById(attachmentId);
-        console.log('Received image URI:', attachmentResponse); // Debug the response
+        console.log('Received image URI:', attachmentResponse);
         if (attachmentResponse) {
           if (typeof attachmentResponse === 'string' && attachmentResponse.startsWith('data:')) {
-            newMessage.image = attachmentResponse; // Already formatted base64
+            newMessage.image = attachmentResponse;
           } else if (
             typeof attachmentResponse === 'string' &&
             !attachmentResponse.startsWith('http')
           ) {
-            newMessage.image = `data:image/jpeg;base64,${attachmentResponse}`; // Assume base64 without prefix
+            newMessage.image = `data:image/jpeg;base64,${attachmentResponse}`;
           } else {
-            newMessage.image = attachmentResponse; // Assume it's a valid URL
+            newMessage.image = attachmentResponse;
           }
         }
       }
@@ -272,19 +272,18 @@ const ChatScreen: React.FC = () => {
       sendMessage('', uploadResponse.attachmentId);
     }
   };
+
   const downloadFile = async (base64String: string, fileName: string) => {
     const files = [
       {
-        url: base64String, // Base64 encoded file
-        name: fileName, // Name of the file (with extension)
-        mimeType: 'application/pdf', // MIME type for PDF file
+        url: base64String,
+        name: fileName,
+        mimeType: 'application/pdf',
       },
     ];
 
     FileDownloader.downloadFilesAsync(files, (directoryChange) => {
       console.log('Directory change:', directoryChange);
-
-      // Show an alert when the file is downloaded
       Alert.alert(
         'Download Complete',
         `Your file "${fileName}" has been downloaded successfully.`,
@@ -292,33 +291,35 @@ const ChatScreen: React.FC = () => {
       );
     });
   };
+
+  const renderMessageImage = (props: { currentMessage?: IMessage }) => {
+    const message = props.currentMessage as FileMessage;
+    return (
+      <TouchableOpacity onPress={() => setImageSelected(message.image ?? null)}>
+        <Image
+          source={{ uri: message.image }}
+          style={styles.imageStyle}
+          resizeMode="contain"
+          onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+        />
+      </TouchableOpacity>
+    );
+  };
+
   const renderMessage = (props: { currentMessage?: IMessage }) => {
     const message = props.currentMessage as FileMessage;
     const isOwnMessage = message?.user._id === Number(senderData.userId);
-    const messageTime = new Date(message?.createdAt || Date.now()).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    if (message?.image) {
-      return (
-        <View
-          style={[
-            styles.bubbleContainer,
-            isOwnMessage ? styles.rightContainer : styles.leftContainer,
-          ]}
-        >
-          <View style={[styles.bubble, isOwnMessage ? styles.rightBubble : styles.leftBubble]}>
-            <TouchableOpacity onPress={() => setImageSelected(message.image ?? null)}>
-              <Image
-                source={{ uri: message.image }}
-                style={styles.imageStyle}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )
-    }
+    // Use the message's createdAt directly, ensuring it's a Date object
+    const messageTime =
+      message?.createdAt instanceof Date
+        ? message.createdAt.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : new Date(message?.createdAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
 
     // File message rendering
     if (message?.fileUrl && message?.fileName) {
@@ -362,26 +363,17 @@ const ChatScreen: React.FC = () => {
           isOwnMessage ? styles.rightContainer : styles.leftContainer,
         ]}>
         <View style={[styles.bubble, isOwnMessage ? styles.rightBubble : styles.leftBubble]}>
-          {message?.image ? (
-            <Image
-              source={{ uri: message.image }}
-              style={styles.messageImage}
-              resizeMode="contain"
-              onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-            />
-          ) : (
-            <Bubble
-              {...props}
-              wrapperStyle={{
-                right: { backgroundColor: 'transparent' },
-                left: { backgroundColor: 'transparent' },
-              }}
-              textStyle={{
-                right: styles.messageTextRight,
-                left: styles.messageTextLeft,
-              }}
-            />
-          )}
+          <Bubble
+            {...props}
+            wrapperStyle={{
+              right: { backgroundColor: 'transparent' },
+              left: { backgroundColor: 'transparent' },
+            }}
+            textStyle={{
+              right: styles.messageTextRight,
+              left: styles.messageTextLeft,
+            }}
+          />
           <Text style={[styles.timestamp, { color: Colors.blueColor }]}>{messageTime}</Text>
         </View>
       </View>
@@ -459,16 +451,19 @@ const ChatScreen: React.FC = () => {
         renderFooter={renderFooter}
         renderInputToolbar={renderInputToolbar}
         renderMessage={renderMessage}
+        renderMessageImage={renderMessageImage}
         showUserAvatar={true}
         alwaysShowSend={true}
         keyboardShouldPersistTaps="handled"
       />
-      {imageSelected && <ImageView
-        images={[{uri: imageSelected}]}
-        imageIndex={0}
-        visible={true}
-        onRequestClose={() => setImageSelected(null)}
-      />}
+      {imageSelected && (
+        <ImageView
+          images={[{ uri: imageSelected }]}
+          imageIndex={0}
+          visible={true}
+          onRequestClose={() => setImageSelected(null)}
+        />
+      )}
     </View>
   );
 };
