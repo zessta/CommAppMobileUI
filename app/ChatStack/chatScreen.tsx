@@ -27,7 +27,7 @@ import {
 } from 'react-native-gifted-chat';
 import { IconSymbol } from '../../components/ui/IconSymbol';
 import { v4 as uuidv4 } from 'uuid';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -37,6 +37,7 @@ import FileDownloader from '@/Utils/fileDownloader';
 import { Colors } from '@/constants/Colors';
 import ImageView from 'react-native-image-viewing';
 import { CameraView } from 'expo-camera';
+import TranslateBar from '@/components/TranslateBar';
 
 export interface AttachmentUploadResponse {
   attachmentId: number;
@@ -64,6 +65,9 @@ const ChatScreen: React.FC = () => {
   const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
   const [capturedImage, setCapturedImage] = useState<any>();
   const cameraRef = useRef<any>(null);
+  const [isTranslateBarVisible, setIsTranslateBarVisible] = useState<boolean>(false);
+  const [enteredText, setEnteredText] = useState<string>('');
+  const [translatedText, setTranslatedText] = useState<string>('');
 
   const requestPermissions = async () => {
     if (Platform.OS === 'android') {
@@ -485,6 +489,10 @@ const ChatScreen: React.FC = () => {
       </View>
     )
   }
+  
+  const handleTranslate = useCallback((trans: string) => {
+    setEnteredText(trans);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -530,7 +538,29 @@ const ChatScreen: React.FC = () => {
         showUserAvatar={true}
         alwaysShowSend={true}
         keyboardShouldPersistTaps="handled"
+        onInputTextChanged={setEnteredText}
+        text={enteredText}
       />
+      {isTranslateBarVisible && (
+        <TranslateBar
+          onTranslate={handleTranslate}
+          enteredText={enteredText}
+          setTranslatedText={setTranslatedText}
+        />
+      )}
+      <View style={styles.translateContainer}>
+        <TouchableOpacity
+          style={styles.translateButton}
+          onPress={() => {
+            setIsTranslateBarVisible(!isTranslateBarVisible);
+          }}>
+          <MaterialIcons
+            name="translate"
+            size={24}
+            color={isTranslateBarVisible ? Colors.brightRed : Colors.blueColor}
+          />
+        </TouchableOpacity>
+      </View>
       {imageSelected && (
         <ImageView
           images={[{ uri: imageSelected }]}
@@ -710,6 +740,24 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 25,
     color: 'white'
+  },
+  translateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderColor: '#f0f0f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    justifyContent: 'center',
+    gap: 40,
+  },
+  translateButton: {
+    // Add styling if needed
   },
 });
 
