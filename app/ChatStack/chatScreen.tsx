@@ -5,7 +5,7 @@ import { useSignalR } from '@/services/signalRService';
 import * as signalR from '@microsoft/signalr';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import {
   Composer,
@@ -35,6 +36,7 @@ import * as MediaLibrary from 'expo-media-library';
 import FileDownloader from '@/Utils/fileDownloader';
 import { Colors } from '@/constants/Colors';
 import ImageView from 'react-native-image-viewing';
+import { CameraView } from 'expo-camera';
 
 export interface AttachmentUploadResponse {
   attachmentId: number;
@@ -59,6 +61,9 @@ const ChatScreen: React.FC = () => {
   const [imageSelected, setImageSelected] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const connection = useSignalR(SOCKET_URL);
+  const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
+  const [capturedImage, setCapturedImage] = useState<any>();
+  const cameraRef = useRef<any>(null);
 
   const requestPermissions = async () => {
     if (Platform.OS === 'android') {
@@ -246,6 +251,45 @@ const ChatScreen: React.FC = () => {
     }
   };
 
+  const getCameraPermission = async () => {
+    let permission = await ImagePicker.getCameraPermissionsAsync();
+    if (!permission.granted) {
+      permission = await ImagePicker.requestCameraPermissionsAsync();
+    }
+    return permission.granted;
+  }
+
+  const openCamera = async () => {
+    const permission = await getCameraPermission();
+    if (!permission) return;
+    setIsCameraOpen(true);
+  }
+
+  const takePicture = async () => {
+    if(cameraRef.current) {
+      const photo = await cameraRef.current.takePictureAsync();
+      const uri = photo.uri;
+      const fileName = uri.split('/').pop() || 'image.jpg';
+      const mimeType = 'image/jpeg';
+
+      setIsCameraOpen(false);
+      setCapturedImage(photo);
+      Alert.alert('Confirm !', 'Do you want to send this image ?', [
+        {
+          text: 'Cancel',
+          onPress: () => setCapturedImage(undefined),
+          style: 'cancel'
+        },
+        {
+          text: 'YES',
+          onPress: () => {
+            handleFileUpload(uri, fileName, mimeType);
+          },
+        }
+      ])
+    }
+  }
+
   const handleFileUpload = async (uri: string, fileName: string, mimeType: string) => {
     const uploadResponse: AttachmentUploadResponse = await uploadFile(uri, fileName, mimeType);
     if (uploadResponse?.attachmentId) {
@@ -356,6 +400,21 @@ const ChatScreen: React.FC = () => {
       );
     }
 
+    useEffect(() => {
+      const backButtonHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (isCameraOpen) {
+          setIsCameraOpen(false);
+          return true;
+        } else {
+          return false;
+        }
+      });
+  
+      return () => {
+        backButtonHandler.remove();
+      }
+    }, [isCameraOpen])
+
     return (
       <View
         style={[
@@ -394,6 +453,9 @@ const ChatScreen: React.FC = () => {
               <TouchableOpacity onPress={pickDocument} style={styles.imageButton}>
                 <MaterialCommunityIcons name="file-document" size={24} color={Colors.blueColor} />
               </TouchableOpacity>
+              <TouchableOpacity onPress={openCamera} style={styles.imageButton}>
+                <MaterialCommunityIcons name="camera-plus" size={24} color={Colors.blueColor} />
+              </TouchableOpacity>
             </View>
             <Composer
               {...composerProps}
@@ -410,6 +472,19 @@ const ChatScreen: React.FC = () => {
       />
     );
   };
+
+  if(isCameraOpen) {
+    return (
+      <View style={styles.modalBackGround}>
+        <CameraView ref={cameraRef} style={styles.camera}>
+        <TouchableOpacity style={styles.captureButton} onPress={takePicture} />
+        <TouchableOpacity style={styles.closeButton} onPress={() => setIsCameraOpen(false)}>
+        <MaterialCommunityIcons name="close" size={24} color={'white'}/>
+        </TouchableOpacity>
+        </CameraView>
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -610,6 +685,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     flex: 1,
     fontWeight: '400',
+  },
+  modalBackGround: {
+    flex: 1,
+    justifyContent: 'center'
+  },
+  camera: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center'
+  },
+  captureButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'white',
+    marginBottom: 20
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    backgroundColor: 'black',
+    padding: 10,
+    borderRadius: 25,
+    color: 'white'
   },
 });
 
